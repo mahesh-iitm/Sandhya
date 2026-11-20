@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d1a3a">
+<title>Sandhyā Kāla</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbf6ee;--card:#fff;--ink:#231d33;--soft:#6c6479;--line:#e9e0d2;--dawn:#f29b38;--noon:#e8c547;--dusk:#c4466b;--night:#1d1a3a;--acc:#d9651f}
+@media(prefers-color-scheme:dark){:root{--bg:#14122a;--card:#1f1c3b;--ink:#f3eee6;--soft:#a9a2bd;--line:#2f2b52}}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+main{max-width:640px;margin:0 auto;padding:18px 16px 48px}
+h1{font:400 34px/1.1 "Tiro Devanagari Sanskrit",serif;margin:4px 0 2px}
+.sub{color:var(--soft);font-size:14px;margin:0 0 16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,select,input{font:inherit;font-size:16px;color:inherit}
+button{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--dawn);outline-offset:2px}
+input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--card)}
+.loc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:14px}
+.loc b{display:block}.loc small{color:var(--soft)}
+.date{margin:0 0 14px}.date input{flex:1}
+.arc{background:linear-gradient(180deg,var(--night),#3b2d5e 70%,#7a3f5c);border-radius:18px;height:150px;position:relative;overflow:hidden;margin-bottom:14px}
+.arc svg{position:absolute;inset:0;width:100%;height:100%}
+.cards{display:grid;gap:10px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:6px 1fr auto;gap:4px 14px;align-items:center}
+.c i{grid-row:1/3;align-self:stretch;border-radius:4px}
+.c h2{margin:0;font-size:17px}.c p{margin:0;color:var(--soft);font-size:14px}
+.c .t{grid-row:1/3;grid-column:3;text-align:right;font-weight:700;font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.c .t small{display:block;font-weight:400;font-size:13px;color:var(--soft)}
+.sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
+.sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
+section.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:14px}
+section.box h3{margin:0 0 8px;font-size:17px}
+label.ck{display:flex;align-items:center;gap:10px;min-height:40px}
+label.ck input{width:22px;height:22px;min-height:0}
+.st{font-size:14px;color:var(--soft);margin:8px 0 0}
+.note{font-size:13px;color:var(--soft);margin-top:18px}
+details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
+.man{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.man input{width:100%}
+</style>
+</head>
+<body>
+<main>
+<h1>Sandhyā Kāla</h1>
+<p class="sub">Sandhyāvandanam times for where you are</p>
+
+<div class="loc">
+ <div class="row" style="justify-content:space-between">
+  <div><b id="locName">No location yet</b><small id="locCoords">Tap the pin to use your current location</small></div>
+  <button class="pri" id="locate" aria-label="Use my current location">📍 Locate me</button>
+ </div>
+ <details><summary>Enter coordinates manually</summary>
+  <div class="man"><input id="mLat" inputmode="decimal" placeholder="Latitude"><input id="mLng" inputmode="decimal" placeholder="Longitude"><input id="mEl" inputmode="decimal" placeholder="Elevation m"></div>
+  <button id="mSave" style="margin-top:8px">Use these</button>
+ </details>
+</div>
+
+<div class="row date"><button id="prev" aria-label="Previous day">‹</button><input type="date" id="day"><button id="next" aria-label="Next day">›</button><button id="today">Today</button></div>
+
+<div class="arc"><svg id="arc" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
+
+<div class="cards" id="cards"></div>
+<div class="sunrow" id="sun"></div>
+
+<section class="box">
+ <h3>Reminders</h3>
+ <label class="ck"><input type="checkbox" id="n0" checked> Prātaḥ Sandhyā</label>
+ <label class="ck"><input type="checkbox" id="n1" checked> Mādhyāhnika</label>
+ <label class="ck"><input type="checkbox" id="n2" checked> Sāyaṁ Sandhyā</label>
+ <div class="row" style="margin-top:6px"><span>Alert</span><select id="lead"><option value="0">at the start</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option></select></div>
+ <div class="row" style="margin-top:10px"><button class="pri" id="notif">Turn on notifications</button><button id="test">Test</button></div>
+ <p class="st" id="nst"></p>
+ <div class="row" style="margin-top:10px"><button id="ics">Add next 30 days to calendar</button></div>
+ <p class="st">The calendar alerts work even when this app is closed. They use the location shown above.</p>
+</section>
+
+<p class="note">Prātaḥ begins 48 min before sunrise and ends at sunrise. Mādhyāhnika is at solar noon. Sāyaṁ begins at sunset and runs 72 min. Brahma Muhūrta begins 96 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets. Method as on sandhyakala.sringeri.net.</p>
+</main>
+
+<script src="sun.js"></script>
+<script>
+{
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+let loc=store.get('loc',null), set=store.get('set',{n:[true,true,true],lead:0,on:false});
+const min=6e4, fmt=t=>t?t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'—';
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+let day=new Date(); day.setHours(12,0,0,0);
+
+function calc(d){if(!loc)return null;const s=SUN.times(d,loc.lat,loc.lng,loc.el||0);if(!s.rise||!s.set)return {polar:true,...s};
+ return {...s,brahma:new Date(s.rise-96*min),pratah:new Date(s.rise-48*min),sayamEnd:new Date(+s.set+72*min)}}
+
+function events(d){const s=calc(d);if(!s||s.polar)return[];
+ return [{k:0,name:'Prātaḥ Sandhyā',at:s.pratah,end:s.rise},{k:1,name:'Mādhyāhnika',at:s.noon,end:null},{k:2,name:'Sāyaṁ Sandhyā',at:s.set,end:s.sayamEnd}]}
+
+function render(){
+ $('day').value=ymd(day);
+ if(loc){$('locName').textContent=loc.name||'Current location';$('locCoords').textContent=`${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}°${loc.el?` · ${Math.round(loc.el)} m`:''}`}
+ const s=calc(day);
+ if(!s){$('cards').innerHTML='<div class="c"><i style="background:var(--line)"></i><h2>Set your location</h2><p>Tap “Locate me” to see today’s times.</p></div>';$('sun').innerHTML='';$('arc').innerHTML='';return}
+ if(s.polar){$('cards').innerHTML='<div class="c"><i style="background:var(--line)"></i><h2>No sunrise or sunset</h2><p>The Sun does not rise or set here on this date.</p></div>';return}
+ const rows=[
+  ['#7b6fd6','Brahma Muhūrta','Begins 96 min before sunrise',fmt(s.brahma),''],
+  ['var(--dawn)','Prātaḥ Sandhyā','48 min before sunrise',fmt(s.pratah),'until '+fmt(s.rise)],
+  ['var(--noon)','Mādhyāhnika','At solar noon',fmt(s.noon),''],
+  ['var(--dusk)','Sāyaṁ Sandhyā','From sunset, 72 min',fmt(s.set),'until '+fmt(s.sayamEnd)]];
+ $('cards').innerHTML=rows.map(r=>`<div class="c"><i style="background:${r[0]}"></i><h2>${r[1]}</h2><p>${r[2]}</p><div class="t">${r[3]}<small>${r[4]}</small></div></div>`).join('');
+ $('sun').innerHTML=[['Sunrise',s.rise,s.geoRise],['Solar noon',s.noon,null],['Sunset',s.set,s.geoSet]].map(x=>`<div>${x[0]}<b>${fmt(x[1])}</b>${x[2]?'('+fmt(x[2])+')':'&nbsp;'}</div>`).join('');
+ drawArc(s);
+}
+
+function drawArc(s){
+ const d0=new Date(day);d0.setHours(3,0,0,0);const span=19*60*min,X=t=>600*(t-d0)/span;
+ const r=X(s.rise),st=X(s.set),n=X(s.noon);
+ const band=(a,b,c)=>`<rect x="${X(a)}" y="0" width="${Math.max(3,X(b)-X(a))}" height="150" fill="${c}" opacity=".55"/>`;
+ const now=new Date(),showNow=ymd(now)===ymd(day)&&now>d0&&now<d0.valueOf()+span;
+ const sx=Math.min(Math.max(X(showNow?now:s.noon),r),st),t=(sx-r)/(st-r),sy=130-110*Math.sin(Math.PI*t);
+ $('arc').innerHTML=band(s.pratah,s.rise,'#f29b38')+band(new Date(s.noon-12*min),new Date(+s.noon+12*min),'#e8c547')+band(s.set,s.sayamEnd,'#c4466b')+
+ `<path d="M${r},130 Q${n},-90 ${st},130" fill="none" stroke="#fff" stroke-opacity=".35" stroke-dasharray="4 6" vector-effect="non-scaling-stroke"/>
+  <line x1="0" y1="130" x2="600" y2="130" stroke="#fff" stroke-opacity=".3" vector-effect="non-scaling-stroke"/>
+  ${(showNow&&now>s.rise&&now<s.set)||!showNow?`<ellipse cx="${sx}" cy="${sy}" rx="9" ry="13" fill="#ffd36b"/>`:''}
+  ${showNow?`<line x1="${X(now)}" y1="0" x2="${X(now)}" y2="150" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>`:''}`;
+}
+
+// location
+async function place(lat,lng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});const j=await r.json();const a=j.address||{};return a.city||a.town||a.village||a.suburb||a.county||j.name||''}catch{return ''}}
+async function elev(lat,lng){try{const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);const j=await r.json();return j.elevation?.[0]||0}catch{return 0}}
+function useLoc(l){loc=l;store.set('loc',loc);render();schedule()}
+$('locate').onclick=()=>{if(!navigator.geolocation){$('locCoords').textContent='Location is not available in this browser';return}
+ $('locCoords').textContent='Finding you…';
+ navigator.geolocation.getCurrentPosition(async p=>{const {latitude:lat,longitude:lng,altitude}=p.coords;
+  useLoc({lat,lng,el:altitude||0,name:'Current location'});
+  const [nm,el]=await Promise.all([place(lat,lng),altitude?altitude:elev(lat,lng)]);useLoc({lat,lng,el,name:nm||'Current location'})},
+  e=>{$('locCoords').textContent=e.code===1?'Location permission was refused. Allow it in your browser settings.':'Could not get your location. Try again.'},
+  {enableHighAccuracy:true,timeout:15000,maximumAge:300000})};
+$('mSave').onclick=()=>{const lat=parseFloat($('mLat').value),lng=parseFloat($('mLng').value),el=parseFloat($('mEl').value)||0;
+ if(isFinite(lat)&&isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180)useLoc({lat,lng,el,name:'Manual location'})};
+
+// dates
+const shift=n=>{day=new Date(day.valueOf()+n*864e5);day.setHours(12,0,0,0);render()};
+$('prev').onclick=()=>shift(-1);$('next').onclick=()=>shift(1);$('today').onclick=()=>{day=new Date();day.setHours(12,0,0,0);render()};
+$('day').onchange=e=>{const [y,m,d]=e.target.value.split('-').map(Number);if(y){day=new Date(y,m-1,d,12);render()}};
+
+// notifications
+let swReg=null,timers=[];
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{});
+['n0','n1','n2'].forEach((id,i)=>{$(id).checked=set.n[i];$(id).onchange=()=>{set.n[i]=$(id).checked;store.set('set',set);schedule()}});
+$('lead').value=set.lead;$('lead').onchange=()=>{set.lead=+$('lead').value;store.set('set',set);schedule()};
+async function notify(title,body){const o={body,icon:'icon-192.png',badge:'icon-192.png',tag:title+body,requireInteraction:true};
+ try{const r=swReg||await navigator.serviceWorker?.ready;if(r){await r.showNotification(title,o);return}}catch{}
+ try{new Notification(title,o)}catch{}}
+function schedule(){timers.forEach(clearTimeout);timers=[];
+ if(!set.on||!loc||!('Notification' in window)||Notification.permission!=='granted'){status();return}
+ const now=Date.now(),list=[];
+ for(let i=0;i<2;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
+  events(d).forEach(e=>{if(!set.n[e.k])return;const t=e.at-set.lead*min;if(t>now)list.push({...e,t})})}
+ list.forEach(e=>timers.push(setTimeout(()=>notify(e.name,(set.lead?`Starts at ${fmt(e.at)}`:'Now')+(e.end?` · until ${fmt(e.end)}`:'')),e.t-now)));
+ timers.push(setTimeout(schedule,Math.min(6*3600e3,(list[list.length-1]?.t||now+3600e3)-now+60e3)));
+ status(list[0])}
+function status(next){let s;
+ if(!('Notification' in window))s='This browser cannot show notifications. On iPhone, first add this app to your Home Screen.';
+ else if(Notification.permission==='denied')s='Notifications are blocked. Allow them for this site in your settings.';
+ else if(!set.on||Notification.permission!=='granted')s='Notifications are off.';
+ else if(!loc)s='Set your location first.';
+ else s=next?`Next: ${next.name} at ${fmt(new Date(next.t))}${new Date(next.t).getDate()!==new Date().getDate()?' tomorrow':''}`:'No more alerts today.';
+ $('nst').textContent=s;$('notif').textContent=set.on&&Notification?.permission==='granted'?'Turn off notifications':'Turn on notifications'}
+$('notif').onclick=async()=>{if(!('Notification' in window)){status();return}
+ if(set.on&&Notification.permission==='granted'){set.on=false}else{const p=await Notification.requestPermission();set.on=p==='granted'}
+ store.set('set',set);schedule()};
+$('test').onclick=async()=>{if(Notification?.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){status();return}}notify('Sandhyā Kāla','Notifications are working')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();schedule()}});
+
+// calendar file
+$('ics').onclick=()=>{if(!loc){$('locCoords').textContent='Set your location first';return}
+ const z=t=>t.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,''),stamp=z(new Date());let out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Sandhya Kala//EN','CALSCALE:GREGORIAN'];
+ for(let i=0;i<30;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
+  events(d).forEach(e=>{if(!set.n[e.k])return;const end=e.end||new Date(+e.at+24*min);
+   out.push('BEGIN:VEVENT',`UID:${z(e.at)}-${e.k}@sandhyakala`,`DTSTAMP:${stamp}`,`DTSTART:${z(e.at)}`,`DTEND:${z(end)}`,`SUMMARY:${e.name}`,`LOCATION:${(loc.name||'').replace(/[,;]/g,' ')}`,
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${e.name}`,`TRIGGER:-PT${set.lead}M`,'END:VALARM','END:VEVENT')})}
+ out.push('END:VCALENDAR');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out.join('\r\n')],{type:'text/calendar'}));a.download='sandhya-30-days.ics';document.body.appendChild(a);a.click();a.remove()};
+
+render();schedule();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
+}
+</script>
+</body>
+</html>

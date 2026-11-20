@@ -36,6 +36,17 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 .c h2{margin:0;font-size:17px}.c p{margin:0;color:var(--soft);font-size:14px}
 .c .t{grid-row:1/3;grid-column:3;text-align:right;font-weight:700;font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .c .t small{display:block;font-weight:400;font-size:13px;color:var(--soft)}
+.sd{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sd>header{display:grid;grid-template-columns:6px 1fr auto;gap:2px 14px;align-items:center;padding:14px 16px}
+.sd>header i{grid-row:1/3;align-self:stretch;border-radius:4px}
+.sd h2{margin:0;font-size:17px}.sd header p{margin:0;color:var(--soft);font-size:14px}
+.sd .t{grid-row:1/3;grid-column:3;text-align:right;font-weight:700;font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sd .t small{display:block;font-weight:400;font-size:13px;color:var(--soft)}
+.k{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 16px 9px 36px;border-top:1px solid var(--line);font-size:15px}
+.k span:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.k small{grid-column:1/-1;color:var(--soft);font-size:13px}
+.k.now{background:color-mix(in srgb,var(--dawn) 18%,transparent);font-weight:600}
+.k.pr{color:var(--soft)}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -70,6 +81,7 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 
 <div class="arc"><svg id="arc" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
 
+<label class="ck" style="justify-content:flex-end;margin:-4px 0 6px"><input type="checkbox" id="detail"> Show Prāyaścitta</label>
 <div class="cards" id="cards"></div>
 <div class="sunrow" id="sun"></div>
 
@@ -85,7 +97,7 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <p class="st">The calendar alerts work even when this app is closed. They use the location shown above.</p>
 </section>
 
-<p class="note">Prātaḥ begins 48 min before sunrise and ends at sunrise. Mādhyāhnika is at solar noon. Sāyaṁ begins at sunset and runs 72 min. Brahma Muhūrta begins 96 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets. Method as on sandhyakala.sringeri.net.</p>
+<p class="note">Kāla divisions follow sandhyakala.sringeri.net. Prātaḥ: Uttama from 48 min before sunrise to dawn (Sun 6° below horizon), Madhyama to sunrise, Adhama to 72 min after sunrise. Mādhyāhnika: Madhyama from 264 min after sunrise (or 96 min before noon), Uttama the 48 min before solar noon, Adhama to 72 min after. Sāyaṁ: Uttama the 48 min before sunset, Madhyama to nautical dusk (Sun 12° below), Adhama to 72 min after sunset. Prāyaścitta runs to 3 hours after sunset. Brāhma Muhūrta is 96 to 48 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets.</p>
 </main>
 
 <script src="sun.js"></script>
@@ -98,11 +110,23 @@ const min=6e4, fmt=t=>t?t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 let day=new Date(); day.setHours(12,0,0,0);
 
-function calc(d){if(!loc)return null;const s=SUN.times(d,loc.lat,loc.lng,loc.el||0);if(!s.rise||!s.set)return {polar:true,...s};
- return {...s,brahma:new Date(s.rise-96*min),pratah:new Date(s.rise-48*min),sayamEnd:new Date(+s.set+72*min)}}
+const S=(t,m)=>new Date(+t+m*min);
+function calc(d){if(!loc)return null;const x=SUN.times(d,loc.lat,loc.lng,loc.el||0);if(!x.rise||!x.set)return {polar:true,...x};
+ const r=x.rise,n=x.noon,st=x.set,pe=S(st,180),dawn=x.dawn||r,nd=x.nauticalDusk||S(st,72);
+ const mm0=(S(n,-48)-S(r,264))/min>=24?S(r,264):S(n,-96);
+ const K={
+  pratah:{uttama:[S(r,-48),dawn],madhyama:[dawn,r],adhama:[r,S(r,72)],prayaschitta:[S(r,72),pe]},
+  madhyahnika:{uttama:[S(n,-48),n],madhyama:[mm0,S(n,-48)],adhama:[n,S(n,72)],prayaschitta:[S(n,72),pe]},
+  sayam:{uttama:[S(st,-48),st],madhyama:[st,nd],adhama:[nd,S(st,72)],prayaschitta:[S(st,72),pe]}};
+ for(const k in K){const v=K[k];v.start=new Date(Math.min(v.uttama[0],v.madhyama[0]));v.end=v.adhama[1]}
+ return {...x,K,brahma:[S(r,-96),S(r,-48)]}}
 
+const NAMES={pratah:'Prātaḥ Sandhyā',madhyahnika:'Mādhyāhnika',sayam:'Sāyaṁ Sandhyā'},KEYS=['pratah','madhyahnika','sayam'];
+const KALA=[['uttama','Uttama'],['madhyama','Madhyama'],['adhama','Adhama']];
+const span=([a,b])=>b>a?`${fmt(a)} – ${fmt(b)}`:'—';
+const summary=v=>KALA.map(([k,l])=>`${l} ${span(v[k])}`).join('\n');
 function events(d){const s=calc(d);if(!s||s.polar)return[];
- return [{k:0,name:'Prātaḥ Sandhyā',at:s.pratah,end:s.rise},{k:1,name:'Mādhyāhnika',at:s.noon,end:null},{k:2,name:'Sāyaṁ Sandhyā',at:s.set,end:s.sayamEnd}]}
+ return KEYS.map((k,i)=>({k:i,name:NAMES[k],at:s.K[k].start,end:s.K[k].end,body:summary(s.K[k])}))}
 
 function render(){
  $('day').value=ymd(day);
@@ -110,12 +134,11 @@ function render(){
  const s=calc(day);
  if(!s){$('cards').innerHTML='<div class="c"><i style="background:var(--line)"></i><h2>Set your location</h2><p>Tap “Locate me” to see today’s times.</p></div>';$('sun').innerHTML='';$('arc').innerHTML='';return}
  if(s.polar){$('cards').innerHTML='<div class="c"><i style="background:var(--line)"></i><h2>No sunrise or sunset</h2><p>The Sun does not rise or set here on this date.</p></div>';return}
- const rows=[
-  ['#7b6fd6','Brahma Muhūrta','Begins 96 min before sunrise',fmt(s.brahma),''],
-  ['var(--dawn)','Prātaḥ Sandhyā','48 min before sunrise',fmt(s.pratah),'until '+fmt(s.rise)],
-  ['var(--noon)','Mādhyāhnika','At solar noon',fmt(s.noon),''],
-  ['var(--dusk)','Sāyaṁ Sandhyā','From sunset, 72 min',fmt(s.set),'until '+fmt(s.sayamEnd)]];
- $('cards').innerHTML=rows.map(r=>`<div class="c"><i style="background:${r[0]}"></i><h2>${r[1]}</h2><p>${r[2]}</p><div class="t">${r[3]}<small>${r[4]}</small></div></div>`).join('');
+ const now=new Date(),det=$('detail').checked,col={pratah:'var(--dawn)',madhyahnika:'var(--noon)',sayam:'var(--dusk)'},desc={pratah:'Morning',madhyahnika:'Midday',sayam:'Evening'};
+ const row=(l,iv,cls='')=>`<div class="k ${cls}${iv[1]>iv[0]&&now>=iv[0]&&now<iv[1]?' now':''}"><span>${l}</span><span>${span(iv)}</span></div>`;
+ $('cards').innerHTML=`<div class="sd"><header><i style="background:#7b6fd6"></i><h2>Brāhma Muhūrta</h2><p>Before dawn</p><div class="t">${fmt(s.brahma[0])}<small>until ${fmt(s.brahma[1])}</small></div></header></div>`+
+ KEYS.map(k=>{const v=s.K[k],ord=k==='madhyahnika'?[KALA[1],KALA[0],KALA[2]]:KALA;
+  return `<div class="sd"><header><i style="background:${col[k]}"></i><h2>${NAMES[k]}</h2><p>${desc[k]}</p><div class="t">${fmt(v.start)}<small>until ${fmt(v.end)}</small></div></header>${ord.map(([kk,l])=>row(l,v[kk])).join('')}${det?row('Prāyaścitta',v.prayaschitta,'pr'):''}</div>`}).join('');
  $('sun').innerHTML=[['Sunrise',s.rise,s.geoRise],['Solar noon',s.noon,null],['Sunset',s.set,s.geoSet]].map(x=>`<div>${x[0]}<b>${fmt(x[1])}</b>${x[2]?'('+fmt(x[2])+')':'&nbsp;'}</div>`).join('');
  drawArc(s);
 }
@@ -126,22 +149,23 @@ function drawArc(s){
  const band=(a,b,c)=>`<rect x="${X(a)}" y="0" width="${Math.max(3,X(b)-X(a))}" height="150" fill="${c}" opacity=".55"/>`;
  const now=new Date(),showNow=ymd(now)===ymd(day)&&now>d0&&now<d0.valueOf()+span;
  const sx=Math.min(Math.max(X(showNow?now:s.noon),r),st),t=(sx-r)/(st-r),sy=130-110*Math.sin(Math.PI*t);
- $('arc').innerHTML=band(s.pratah,s.rise,'#f29b38')+band(new Date(s.noon-12*min),new Date(+s.noon+12*min),'#e8c547')+band(s.set,s.sayamEnd,'#c4466b')+
+ $('arc').innerHTML=band(s.K.pratah.start,s.K.pratah.end,'#f29b38')+band(s.K.madhyahnika.start,s.K.madhyahnika.end,'#e8c547')+band(s.K.sayam.start,s.K.sayam.end,'#c4466b')+
  `<path d="M${r},130 Q${n},-90 ${st},130" fill="none" stroke="#fff" stroke-opacity=".35" stroke-dasharray="4 6" vector-effect="non-scaling-stroke"/>
   <line x1="0" y1="130" x2="600" y2="130" stroke="#fff" stroke-opacity=".3" vector-effect="non-scaling-stroke"/>
   ${(showNow&&now>s.rise&&now<s.set)||!showNow?`<ellipse cx="${sx}" cy="${sy}" rx="9" ry="13" fill="#ffd36b"/>`:''}
   ${showNow?`<line x1="${X(now)}" y1="0" x2="${X(now)}" y2="150" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>`:''}`;
 }
 
+$('detail').checked=store.get('detail',false);$('detail').onchange=()=>{store.set('detail',$('detail').checked);render()};
 // location
 async function place(lat,lng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});const j=await r.json();const a=j.address||{};return a.city||a.town||a.village||a.suburb||a.county||j.name||''}catch{return ''}}
-async function elev(lat,lng){try{const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);const j=await r.json();return j.elevation?.[0]||0}catch{return 0}}
+async function elev(lat,lng){try{const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);const j=await r.json();return j.elevation?.[0]??null}catch{return null}}
 function useLoc(l){loc=l;store.set('loc',loc);render();schedule()}
 $('locate').onclick=()=>{if(!navigator.geolocation){$('locCoords').textContent='Location is not available in this browser';return}
  $('locCoords').textContent='Finding you…';
  navigator.geolocation.getCurrentPosition(async p=>{const {latitude:lat,longitude:lng,altitude}=p.coords;
-  useLoc({lat,lng,el:altitude||0,name:'Current location'});
-  const [nm,el]=await Promise.all([place(lat,lng),altitude?altitude:elev(lat,lng)]);useLoc({lat,lng,el,name:nm||'Current location'})},
+  useLoc({lat,lng,el:loc&&Math.abs(loc.lat-lat)<.01&&Math.abs(loc.lng-lng)<.01?loc.el:0,name:'Current location'});
+  const [nm,dem]=await Promise.all([place(lat,lng),elev(lat,lng)]);useLoc({lat,lng,el:dem||altitude||0,name:nm||'Current location'})},
   e=>{$('locCoords').textContent=e.code===1?'Location permission was refused. Allow it in your browser settings.':'Could not get your location. Try again.'},
   {enableHighAccuracy:true,timeout:15000,maximumAge:300000})};
 $('mSave').onclick=()=>{const lat=parseFloat($('mLat').value),lng=parseFloat($('mLng').value),el=parseFloat($('mEl').value)||0;
@@ -165,7 +189,7 @@ function schedule(){timers.forEach(clearTimeout);timers=[];
  const now=Date.now(),list=[];
  for(let i=0;i<2;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
   events(d).forEach(e=>{if(!set.n[e.k])return;const t=e.at-set.lead*min;if(t>now)list.push({...e,t})})}
- list.forEach(e=>timers.push(setTimeout(()=>notify(e.name,(set.lead?`Starts at ${fmt(e.at)}`:'Now')+(e.end?` · until ${fmt(e.end)}`:'')),e.t-now)));
+ list.forEach(e=>timers.push(setTimeout(()=>notify(e.name,(set.lead?`Starts at ${fmt(e.at)}\n`:'')+e.body),e.t-now)));
  timers.push(setTimeout(schedule,Math.min(6*3600e3,(list[list.length-1]?.t||now+3600e3)-now+60e3)));
  status(list[0])}
 function status(next){let s;
@@ -185,8 +209,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();
 $('ics').onclick=()=>{if(!loc){$('locCoords').textContent='Set your location first';return}
  const z=t=>t.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,''),stamp=z(new Date());let out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Sandhya Kala//EN','CALSCALE:GREGORIAN'];
  for(let i=0;i<30;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
-  events(d).forEach(e=>{if(!set.n[e.k])return;const end=e.end||new Date(+e.at+24*min);
-   out.push('BEGIN:VEVENT',`UID:${z(e.at)}-${e.k}@sandhyakala`,`DTSTAMP:${stamp}`,`DTSTART:${z(e.at)}`,`DTEND:${z(end)}`,`SUMMARY:${e.name}`,`LOCATION:${(loc.name||'').replace(/[,;]/g,' ')}`,
+  events(d).forEach(e=>{if(!set.n[e.k])return;const end=e.end;
+   out.push('BEGIN:VEVENT',`UID:${z(e.at)}-${e.k}@sandhyakala`,`DTSTAMP:${stamp}`,`DTSTART:${z(e.at)}`,`DTEND:${z(end)}`,`SUMMARY:${e.name}`,`DESCRIPTION:${e.body.replace(/\n/g,'\\n')}`,`LOCATION:${(loc.name||'').replace(/[,;]/g,' ')}`,
     'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${e.name}`,`TRIGGER:-PT${set.lead}M`,'END:VALARM','END:VEVENT')})}
  out.push('END:VCALENDAR');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out.join('\r\n')],{type:'text/calendar'}));a.download='sandhya-30-days.ics';document.body.appendChild(a);a.click();a.remove()};

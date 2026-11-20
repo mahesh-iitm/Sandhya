@@ -178,6 +178,9 @@ $('day').onchange=e=>{const [y,m,d]=e.target.value.split('-').map(Number);if(y){
 
 // notifications
 let swReg=null,timers=[];
+const hasN=()=>'Notification' in window, perm=()=>hasN()?Notification.permission:'unsupported';
+const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{});
 ['n0','n1','n2'].forEach((id,i)=>{$(id).checked=set.n[i];$(id).onchange=()=>{set.n[i]=$(id).checked;store.set('set',set);schedule()}});
 $('lead').value=set.lead;$('lead').onchange=()=>{set.lead=+$('lead').value;store.set('set',set);schedule()};
@@ -193,16 +196,17 @@ function schedule(){timers.forEach(clearTimeout);timers=[];
  timers.push(setTimeout(schedule,Math.min(6*3600e3,(list[list.length-1]?.t||now+3600e3)-now+60e3)));
  status(list[0])}
 function status(next){let s;
- if(!('Notification' in window))s='This browser cannot show notifications. On iPhone, first add this app to your Home Screen.';
+ if(!hasN())s=ios&&!standalone()?'On iPhone, notifications only work when the app is opened from its Home Screen icon. In Safari tap Share, then Add to Home Screen, then open it from that icon.':'This browser cannot show notifications. Open the page in Chrome or Safari, not inside another app.';
  else if(Notification.permission==='denied')s='Notifications are blocked. Allow them for this site in your settings.';
  else if(!set.on||Notification.permission!=='granted')s='Notifications are off.';
  else if(!loc)s='Set your location first.';
  else s=next?`Next: ${next.name} at ${fmt(new Date(next.t))}${new Date(next.t).getDate()!==new Date().getDate()?' tomorrow':''}`:'No more alerts today.';
- $('nst').textContent=s;$('notif').textContent=set.on&&Notification?.permission==='granted'?'Turn off notifications':'Turn on notifications'}
-$('notif').onclick=async()=>{if(!('Notification' in window)){status();return}
- if(set.on&&Notification.permission==='granted'){set.on=false}else{const p=await Notification.requestPermission();set.on=p==='granted'}
- store.set('set',set);schedule()};
-$('test').onclick=async()=>{if(Notification?.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){status();return}}notify('Sandhyā Kāla','Notifications are working')};
+ $('nst').textContent=s;$('nst').style.color=/Next|No more/.test(s)?'':'var(--acc)';$('notif').textContent=set.on&&perm()==='granted'?'Turn off notifications':'Turn on notifications'}
+$('notif').onclick=async()=>{$('nst').textContent='Asking your phone for permission…';
+ try{if(!hasN()){status();return}
+  if(set.on&&perm()==='granted'){set.on=false}else{const p=await Notification.requestPermission();set.on=p==='granted'}
+  store.set('set',set);schedule()}catch(e){$('nst').textContent='Could not turn on notifications: '+e.message}};
+$('test').onclick=async()=>{try{if(!hasN()){status();return}if(perm()!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){status();return}}await notify('Sandhyā Kāla','Notifications are working');$('nst').textContent='Test sent. If no alert appeared, check notification settings for this app.'}catch(e){$('nst').textContent='Test failed: '+e.message}};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();schedule()}});
 
 // calendar file

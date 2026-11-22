@@ -347,7 +347,7 @@ $('calSub').onclick=async e=>{e.preventDefault();if(!loc){$('cst').textContent='
 $('calCopy').onclick=async()=>{if(!loc){$('cst').textContent='Tap “Locate me” first.';return}await sync();
  try{await navigator.clipboard.writeText(calUrl());$('cst').textContent='Link copied. In Google Calendar on a computer: Other calendars → + → From URL → paste.'}catch{$('cst').textContent='Your link: '+calUrl()}};
 
-render();status();if(set.on&&loc)sync();autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
+render();status();if(set.on&&loc){(perm()==='granted'?subscribe().then(sub=>sync({sub})).catch(()=>sync()):sync()).then(()=>status())}autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
 }
 </script>
 </body>

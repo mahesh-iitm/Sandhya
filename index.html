@@ -47,6 +47,20 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 .k small{grid-column:1/-1;color:var(--soft);font-size:13px}
 .k.now{background:color-mix(in srgb,var(--dawn) 18%,transparent);font-weight:600}
 .k.pr{color:var(--soft)}
+.done{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px 12px;border-top:1px solid var(--line)}
+.done button{min-height:40px}
+.done .ok{font-weight:600}.done .ok small{display:block;font-weight:400;color:var(--soft);font-size:13px}
+.done .lnk{border:0;background:none;color:var(--soft);text-decoration:underline;padding:0 6px;min-height:40px}
+.done input[type=time]{min-height:40px}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:13px;font-weight:600;color:#fff}
+.u{background:#2e9d5b}.m{background:#c99a00}.a{background:#e07a1f}.p{background:#c4466b}.x{background:#8a8499}
+.streak{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+.streak b{font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:7.5em repeat(14,minmax(0,1fr));gap:4px;align-items:center;margin-top:12px;font-size:12px;color:var(--soft)}
+.grid .dot{aspect-ratio:1;border-radius:50%;border:1.5px solid var(--line);max-width:20px;justify-self:center;width:100%}
+.grid .dh{text-align:center}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:13px;color:var(--soft)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;background:var(--c)}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -84,6 +98,14 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 <label class="ck" style="justify-content:flex-end;margin:-4px 0 6px"><input type="checkbox" id="detail"> Show Prāyaścitta</label>
 <div class="cards" id="cards"></div>
 <div class="sunrow" id="sun"></div>
+
+<section class="box" id="trk">
+ <h3>My Sandhyāvandanam</h3>
+ <div class="streak"><div><b id="stk">0</b> <span>day streak</span></div><div style="color:var(--soft)">Best <span id="best">0</span> · All three, any kāla</div></div>
+ <div class="grid" id="grid"></div>
+ <div class="legend"><span style="--c:#2e9d5b">Uttama</span><span style="--c:#c99a00">Madhyama</span><span style="--c:#e07a1f">Adhama</span><span style="--c:#c4466b">Prāyaścitta</span><span style="--c:#8a8499">Outside kāla</span></div>
+ <p class="st">Tap “Did it now” on a sandhyā above when you finish. Your record stays on this phone only.</p>
+</section>
 
 <section class="box">
  <h3>Reminders</h3>
@@ -128,6 +150,33 @@ const summary=v=>KALA.map(([k,l])=>`${l} ${span(v[k])}`).join('\n');
 function events(d){const s=calc(d);if(!s||s.polar)return[];
  return KEYS.map((k,i)=>({k:i,name:NAMES[k],at:s.K[k].start,end:s.K[k].end,body:summary(s.K[k])}))}
 
+// ---- tracker ----
+const KL={uttama:['Uttama','u'],madhyama:['Madhyama','m'],adhama:['Adhama','a'],prayaschitta:['Prāyaścitta','p'],early:['Before kāla','x'],late:['After kāla','x']};
+let log=store.get('log',{});
+const saveLog=()=>store.set('log',log);
+function classify(v,t){for(const k of ['uttama','madhyama','adhama','prayaschitta']){const [a,b]=v[k];if(b>a&&t>=a&&t<b)return k}
+ return t<v.start?'early':'late'}
+function record(k,t){const s=calc(day);if(!s||s.polar)return;const d=ymd(day);
+ (log[d]=log[d]||{})[k]={t:t.toISOString(),kala:classify(s.K[k],t)};saveLog();render()}
+function doneBar(k,v){const d=ymd(day),e=log[d]?.[k],isToday=d===ymd(new Date());
+ if(e){const [l,c]=KL[e.kala];return `<div class="done"><span class="ok">✓ Done at ${fmt(new Date(e.t))} <span class="tag ${c}">${l}</span></span><button class="lnk" data-undo="${k}">Undo</button></div>`}
+ const future=day>new Date()&&!isToday;if(future)return '';
+ return `<div class="done">${isToday?`<button class="pri" data-now="${k}">Did it now</button>`:''}<button class="lnk" data-pick="${k}">${isToday?'Done earlier?':'Record time'}</button><input type="time" data-time="${k}" hidden aria-label="Time completed"><button data-save="${k}" hidden>Save</button></div>`}
+$('cards').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
+ if(ds.now)record(ds.now,new Date());
+ else if(ds.undo){const d=ymd(day);if(log[d]){delete log[d][ds.undo];if(!Object.keys(log[d]).length)delete log[d];saveLog();render()}}
+ else if(ds.pick){const bar=b.parentElement;bar.querySelector('input').hidden=false;bar.querySelector('[data-save]').hidden=false;b.hidden=true;bar.querySelector('input').focus()}
+ else if(ds.save){const inp=b.parentElement.querySelector('input');if(!inp.value)return;const [h,m]=inp.value.split(':').map(Number);const t=new Date(day);t.setHours(h,m,0,0);record(ds.save,t)}});
+function renderTrack(){const today=new Date();today.setHours(12,0,0,0);const full=d=>{const e=log[ymd(d)];return e&&KEYS.every(k=>e[k])};
+ let st=0,d=new Date(today);if(!full(d))d.setDate(d.getDate()-1);while(full(d)){st++;d.setDate(d.getDate()-1)}
+ const days=Object.keys(log).filter(x=>KEYS.every(k=>log[x][k])).sort();let best=0,run=0,prev=null;
+ for(const x of days){const t=new Date(x+'T12:00:00');run=prev&&Math.round((t-prev)/864e5)===1?run+1:1;best=Math.max(best,run);prev=t}
+ $('stk').textContent=st;$('best').textContent=best;
+ const cols=[...Array(14)].map((_,i)=>{const x=new Date(today);x.setDate(x.getDate()-13+i);return x});
+ const short={pratah:'Prātaḥ',madhyahnika:'Mādhyāhnika',sayam:'Sāyaṁ'},C={u:'#2e9d5b',m:'#c99a00',a:'#e07a1f',p:'#c4466b',x:'#8a8499'};
+ $('grid').innerHTML='<span></span>'+cols.map(x=>`<span class="dh">${x.getDate()}</span>`).join('')+
+  KEYS.map(k=>`<span>${short[k]}</span>`+cols.map(x=>{const e=log[ymd(x)]?.[k];const c=e?C[KL[e.kala][1]]:'';return `<span class="dot" title="${ymd(x)}${e?' '+KL[e.kala][0]:''}" style="${c?`background:${c};border-color:${c}`:''}"></span>`}).join('')).join('')}
+
 function render(){
  $('day').value=ymd(day);
  if(loc){$('locName').textContent=loc.name||'Current location';$('locCoords').textContent=`${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}°${loc.el?` · ${Math.round(loc.el)} m`:''}`}
@@ -138,7 +187,8 @@ function render(){
  const row=(l,iv,cls='')=>`<div class="k ${cls}${iv[1]>iv[0]&&now>=iv[0]&&now<iv[1]?' now':''}"><span>${l}</span><span>${span(iv)}</span></div>`;
  $('cards').innerHTML=`<div class="sd"><header><i style="background:#7b6fd6"></i><h2>Brāhma Muhūrta</h2><p>Before dawn</p><div class="t">${fmt(s.brahma[0])}<small>until ${fmt(s.brahma[1])}</small></div></header></div>`+
  KEYS.map(k=>{const v=s.K[k],ord=k==='madhyahnika'?[KALA[1],KALA[0],KALA[2]]:KALA;
-  return `<div class="sd"><header><i style="background:${col[k]}"></i><h2>${NAMES[k]}</h2><p>${desc[k]}</p><div class="t">${fmt(v.start)}<small>until ${fmt(v.end)}</small></div></header>${ord.map(([kk,l])=>row(l,v[kk])).join('')}${det?row('Prāyaścitta',v.prayaschitta,'pr'):''}</div>`}).join('');
+  return `<div class="sd"><header><i style="background:${col[k]}"></i><h2>${NAMES[k]}</h2><p>${desc[k]}</p><div class="t">${fmt(v.start)}<small>until ${fmt(v.end)}</small></div></header>${ord.map(([kk,l])=>row(l,v[kk])).join('')}${det?row('Prāyaścitta',v.prayaschitta,'pr'):''}${doneBar(k,v)}</div>`}).join('');
+ renderTrack();
  $('sun').innerHTML=[['Sunrise',s.rise,s.geoRise],['Solar noon',s.noon,null],['Sunset',s.set,s.geoSet]].map(x=>`<div>${x[0]}<b>${fmt(x[1])}</b>${x[2]?'('+fmt(x[2])+')':'&nbsp;'}</div>`).join('');
  drawArc(s);
 }

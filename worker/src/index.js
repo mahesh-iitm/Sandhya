@@ -66,6 +66,15 @@ export default {
   let m=p.match(/^\/user\/([a-f0-9-]{36})$/);
   if(m&&req.method==='DELETE'){await env.DB.prepare('DELETE FROM users WHERE id=?').bind(m[1]).run();return json({ok:true})}
   if(m&&req.method==='GET'){const u=await env.DB.prepare('SELECT id,place,next_at,last_push,last_status,sub IS NOT NULL AS push FROM users WHERE id=?').bind(m[1]).first();return u?json(u):json({error:'not found'},404)}
+  m=p.match(/^\/log\/([a-f0-9-]{36})$/);
+  if(m&&req.method==='GET'){const r=await env.DB.prepare('SELECT data,updated FROM logs WHERE id=?').bind(m[1]).first();return json(r?{log:JSON.parse(r.data),updated:r.updated}:{log:{},updated:0})}
+  if(m&&req.method==='POST'){const t=await req.text();if(t.length>300000)return json({error:'too large'},413);let b;try{b=JSON.parse(t)}catch{return json({error:'bad json'},400)}
+   const L=b&&b.log;if(!L||typeof L!=='object'||Array.isArray(L))return json({error:'bad log'},400);
+   const clean={};for(const [d,v] of Object.entries(L)){if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||typeof v!=='object')continue;const o={};
+    for(const k of ['pratah','madhyahnika','sayam'])if(v[k]&&typeof v[k].t==='string'&&typeof v[k].kala==='string')o[k]={t:v[k].t.slice(0,30),kala:v[k].kala.slice(0,15)};
+    if(Object.keys(o).length)clean[d]=o}
+   const now=Date.now();await env.DB.prepare('INSERT INTO logs(id,data,updated) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated=excluded.updated').bind(m[1],JSON.stringify(clean),now).run();
+   return json({ok:true,days:Object.keys(clean).length,updated:now})}
   m=p.match(/^\/cal\/([a-f0-9-]{36})\.ics$/);
   if(m){const u=await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(m[1]).first();if(!u)return new Response('Not found',{status:404});
    return new Response(ics(u,ORIGIN),{headers:{'Content-Type':'text/calendar; charset=utf-8','Cache-Control':'max-age=300','Content-Disposition':'inline; filename="sandhya.ics"'}})}

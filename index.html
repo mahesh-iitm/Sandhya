@@ -115,7 +115,14 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <div class="grid" id="grid"></div>
  <div class="legend"><span style="--c:#2e9d5b">Uttama</span><span style="--c:#c99a00">Madhyama</span><span style="--c:#e07a1f">Adhama</span><span style="--c:#c4466b">Prāyaścitta</span><span style="--c:#8a8499">Outside kāla</span></div>
  <div class="sharebar"><button class="pri" id="shareBtn">Share Trikāla card</button><span class="st" id="shareNote" style="margin:0"></span></div>
- <p class="st">Tap “कृतम् · Done” on a sandhyā above when you finish. Your record stays on this phone only.</p>
+ <p class="st">Tap “कृतम् · Done” on a sandhyā above when you finish.</p>
+ <details id="bk"><summary>Backup and new phone</summary>
+  <p class="st" id="bkSt">Your record is backed up automatically.</p>
+  <p class="st" style="margin:6px 0 4px">Your backup code (keep it safe, it is the key to your record):</p>
+  <div class="row"><code id="bkCode" style="font-size:13px;word-break:break-all;flex:1"></code><button id="bkCopy">Copy</button></div>
+  <p class="st" style="margin:12px 0 4px">Moving to a new phone? Enter the code from your old phone:</p>
+  <div class="row"><input id="bkIn" placeholder="Backup code" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:0"><button id="bkGo">Restore</button></div>
+ </details>
 </section>
 <div id="shModal" role="dialog" aria-modal="true" aria-label="Trikāla card"><div class="in"><img id="shImg" alt="Trikāla Sandhyāvandanam card"><div class="row"><button class="pri" id="shGo">Share</button><button id="shClose">Close</button></div><p class="st" id="shHint" style="margin:0"></p></div></div>
 
@@ -167,7 +174,7 @@ function events(d){const s=calc(d);if(!s||s.polar)return[];
 // ---- tracker ----
 const KL={uttama:['Uttama','u'],madhyama:['Madhyama','m'],adhama:['Adhama','a'],prayaschitta:['Prāyaścitta','p'],early:['Before kāla','x'],late:['After kāla','x']};
 let log=store.get('log',{});
-const saveLog=()=>store.set('log',log);
+const saveLog=()=>{store.set('log',log);try{pushLog()}catch{}};
 function classify(v,t){for(const k of ['uttama','madhyama','adhama','prayaschitta']){const [a,b]=v[k];if(b>a&&t>=a&&t<b)return k}
  return t<v.start?'early':'late'}
 function record(k,t){const s=calc(day);if(!s||s.polar)return;const d=ymd(day);
@@ -193,6 +200,26 @@ function renderTrack(){const today=new Date();today.setHours(12,0,0,0);
  const short={pratah:'Prātaḥ',madhyahnika:'Mādhyāhnika',sayam:'Sāyaṁ'},C={u:'#2e9d5b',m:'#c99a00',a:'#e07a1f',p:'#c4466b',x:'#8a8499'};
  $('grid').innerHTML='<span></span>'+cols.map(x=>`<span class="dh">${x.getDate()}</span>`).join('')+
   KEYS.map(k=>`<span>${short[k]}</span>`+cols.map(x=>{const e=log[ymd(x)]?.[k];const c=e?C[KL[e.kala][1]]:'';return `<span class="dot" title="${ymd(x)}${e?' '+KL[e.kala][0]:''}" style="${c?`background:${c};border-color:${c}`:''}"></span>`}).join('')).join('')}
+
+// ---- backup ----
+let bkT=null;
+function pushLog(){clearTimeout(bkT);bkT=setTimeout(async()=>{try{const r=await fetch(SERVER+'/log/'+uid,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log})});
+ $('bkSt').textContent=r.ok?'Your record is backed up automatically. Last backup: '+new Date().toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Backup will retry when you are online.'}catch{$('bkSt').textContent='Backup will retry when you are online.'}},800)}
+async function pullLog(id=uid){try{const r=await fetch(SERVER+'/log/'+id);if(!r.ok)return false;const {log:remote}=await r.json();let added=0;
+ for(const [d,v] of Object.entries(remote||{})){log[d]=log[d]||{};for(const k of Object.keys(v))if(!log[d][k]){log[d][k]=v[k];added++}}
+ store.set('log',log);return {added,days:Object.keys(remote||{}).length}}catch{return false}}
+function initBackup(){$('bkCode').textContent=uid;
+ $('bkCopy').onclick=async()=>{try{await navigator.clipboard.writeText(uid);$('bkCopy').textContent='Copied'}catch{}};
+ $('bkGo').onclick=async()=>{const code=$('bkIn').value.trim().toLowerCase();
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(code)){$('bkSt').textContent='That code does not look right. Copy it exactly from the old phone.';return}
+  $('bkSt').textContent='Restoring…';const res=await pullLog(code);
+  if(!res){$('bkSt').textContent='Could not reach the server. Try again when online.';return}
+  if(!res.days){$('bkSt').textContent='No record found for that code.';return}
+  uid=code;store.set('uid',uid);$('bkCode').textContent=uid;render();pushLog();
+  if(set.on&&perm()==='granted'){try{const sub=await subscribe();await sync({sub})}catch{await sync()}}else sync();
+  const msg=`Restored ${res.days} day${res.days>1?'s':''} of record. This phone now uses the same backup code.`;$('bkSt').textContent=msg;setTimeout(()=>$('bkSt').textContent=msg,1500)}}
+// pull on open (in case another device or a reinstall has more)
+async function bootBackup(){initBackup();const before=JSON.stringify(log);const r=await pullLog();if(r&&r.added)render();if(JSON.stringify(log)!==before||r&&!r.days&&Object.keys(log).length)pushLog()}
 
 // ---- share card ----
 let lastBlob=null;
@@ -339,7 +366,7 @@ async function autoLocate(){if(!$('autoloc').checked||!navigator.geolocation||Da
   if(loc&&Math.abs(loc.lat-lat)<.02&&Math.abs(loc.lng-lng)<.02)return; // under ~2 km: keep
   const [nm,dem]=await Promise.all([place(lat,lng),elev(lat,lng)]);useLoc({lat,lng,el:dem||0,name:nm||'Current location'})},()=>{},{maximumAge:600000,timeout:15000})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();status();autoLocate()}});
-render();status();if(set.on&&loc){(perm()==='granted'?subscribe().then(sub=>sync({sub})).catch(()=>sync()):sync()).then(()=>status())}autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
+bootBackup();render();status();if(set.on&&loc){(perm()==='granted'?subscribe().then(sub=>sync({sub})).catch(()=>sync()):sync()).then(()=>status())}autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
 }
 </script>
 </body>

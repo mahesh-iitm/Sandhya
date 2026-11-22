@@ -61,6 +61,11 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 .grid .dh{text-align:center}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:13px;color:var(--soft)}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.sharebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+#shModal{position:fixed;inset:0;background:rgba(10,8,25,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#shModal.on{display:flex}
+#shModal .in{background:var(--card);border-radius:18px;padding:14px;max-width:440px;width:100%;display:grid;gap:10px}
+#shModal img{width:100%;border-radius:12px;display:block}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -106,8 +111,10 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <div class="streak" style="margin-top:10px;font-size:15px"><div><b id="stk" style="font-size:22px">0</b> <span>days with all three done</span></div><div style="color:var(--soft)">Best <span id="best">0</span> · any kāla, Prāyaścitta included</div></div>
  <div class="grid" id="grid"></div>
  <div class="legend"><span style="--c:#2e9d5b">Uttama</span><span style="--c:#c99a00">Madhyama</span><span style="--c:#e07a1f">Adhama</span><span style="--c:#c4466b">Prāyaścitta</span><span style="--c:#8a8499">Outside kāla</span></div>
+ <div class="sharebar"><button class="pri" id="shareBtn">Share Trikāla card</button><span class="st" id="shareNote" style="margin:0"></span></div>
  <p class="st">Tap “Did it now” on a sandhyā above when you finish. Your record stays on this phone only.</p>
 </section>
+<div id="shModal" role="dialog" aria-modal="true" aria-label="Trikāla card"><div class="in"><img id="shImg" alt="Trikāla Sandhyāvandanam card"><div class="row"><button class="pri" id="shGo">Share</button><button id="shClose">Close</button></div><p class="st" id="shHint" style="margin:0"></p></div></div>
 
 <section class="box">
  <h3>Reminders</h3>
@@ -182,6 +189,52 @@ function renderTrack(){const today=new Date();today.setHours(12,0,0,0);
  $('grid').innerHTML='<span></span>'+cols.map(x=>`<span class="dh">${x.getDate()}</span>`).join('')+
   KEYS.map(k=>`<span>${short[k]}</span>`+cols.map(x=>{const e=log[ymd(x)]?.[k];const c=e?C[KL[e.kala][1]]:'';return `<span class="dot" title="${ymd(x)}${e?' '+KL[e.kala][0]:''}" style="${c?`background:${c};border-color:${c}`:''}"></span>`}).join('')).join('')}
 
+// ---- share card ----
+let lastBlob=null;
+async function makeCard(){const d=ymd(day),e=log[d];const s=calc(day);if(!e||!s)return null;
+ try{await Promise.all([document.fonts.load('64px "Tiro Devanagari Sanskrit"','त्रिकाल सन्ध्यावन्दनम्'),document.fonts.load('700 40px Inter'),document.fonts.load('400 30px Inter')])}catch{}
+ const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ const bg=g.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#141235');bg.addColorStop(.55,'#3b2d5e');bg.addColorStop(.82,'#8a4060');bg.addColorStop(1,'#e0874a');g.fillStyle=bg;g.fillRect(0,0,W,H);
+ // stars
+ g.fillStyle='rgba(255,255,255,.55)';for(let i=0;i<60;i++){const x=(i*397)%W,y=(i*211)%520;if(y>50&&y<280&&x>220&&x<860)continue;g.beginPath();g.arc(x,y,(i%3)+1,0,7);g.fill()}
+ g.textAlign='center';g.fillStyle='#fff';
+ g.font='72px "Tiro Devanagari Sanskrit", serif';g.fillText('त्रिकाल सन्ध्यावन्दनम्',W/2,150);
+ g.font='600 34px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.8)';g.fillText('Trikāla Sandhyāvandanam',W/2,205);
+ g.font='400 32px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.75)';
+ g.fillText(day.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+(loc?.name&&!/location/i.test(loc.name)?' · '+loc.name:''),W/2,255);
+ // sun arc
+ const cx=W/2,base=640,R=330,col={u:'#3ccf7a',m:'#f2c230',a:'#f08a2c',p:'#e0507a',x:'#a59fb8'};
+ g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=4;g.setLineDash([10,14]);g.beginPath();g.arc(cx,base,R,Math.PI,0);g.stroke();g.setLineDash([]);
+ g.strokeStyle='rgba(255,255,255,.5)';g.lineWidth=3;g.beginPath();g.moveTo(80,base);g.lineTo(W-80,base);g.stroke();
+ const pos=[[cx-R,base],[cx,base-R],[cx+R,base]];
+ KEYS.forEach((k,i)=>{const [l,cl]=KL[e[k].kala];const [x,y]=pos[i];const glow=g.createRadialGradient(x,y,10,x,y,80);glow.addColorStop(0,col[cl]);glow.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=glow;g.beginPath();g.arc(x,y,80,0,7);g.fill();g.fillStyle=col[cl];g.beginPath();g.arc(x,y,36,0,7);g.fill();
+  g.strokeStyle='#fff';g.lineWidth=6;g.beginPath();g.moveTo(x-14,y+1);g.lineTo(x-3,y+12);g.lineTo(x+16,y-12);g.stroke()});
+ // rows
+ const names=['Prātaḥ Sandhyā','Mādhyāhnika','Sāyaṁ Sandhyā'];let y=760;
+ KEYS.forEach((k,i)=>{const [l,cl]=KL[e[k].kala];g.fillStyle='rgba(255,255,255,.1)';rr(g,90,y,W-180,118,24);g.fill();
+  g.textAlign='left';g.fillStyle='#fff';g.font='700 40px Inter, sans-serif';g.fillText(names[i],130,y+56);
+  g.font='400 30px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.75)';g.fillText(fmt(new Date(e[k].t)),130,y+96);
+  g.font='700 32px Inter, sans-serif';const tw=g.measureText(l).width+48;g.fillStyle=col[cl];rr(g,W-130-tw,y+34,tw,54,27);g.fill();
+  g.fillStyle=cl==='m'?'#2a2000':'#fff';g.textAlign='center';g.fillText(l,W-130-tw/2,y+72);y+=140});
+ // streak line
+ const sak=KEYS.every(k=>['uttama','madhyama','adhama'].includes(e[k].kala)),sk=+($('sk').textContent||0);
+ g.textAlign='center';g.fillStyle='#fff';g.font='700 40px Inter, sans-serif';
+ g.fillText(sak?(sk>1&&d===ymd(new Date())?`Sakāla · ${sk}-day streak`:'Sakāla ✓'):'Trikāla complete ✓',W/2,y+40);
+ g.font='400 26px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.85)';g.fillText('mahesh-iitm.github.io/Sandhya',W/2,H-40);
+ return await new Promise(r=>c.toBlob(r,'image/png'))}
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function updateShare(){const e=log[ymd(day)],full=!!e&&KEYS.every(k=>e[k]);$('shareBtn').disabled=!full;$('shareBtn').style.opacity=full?1:.5;
+ $('shareNote').textContent=full?(ymd(day)===ymd(new Date())?'Today is complete':'For '+day.toLocaleDateString('en-IN',{day:'numeric',month:'short'})):'Record all three sandhyās to share'}
+$('shareBtn').onclick=async()=>{if($('shareBtn').disabled)return;lastBlob=await makeCard();if(!lastBlob)return;
+ $('shImg').src=URL.createObjectURL(lastBlob);$('shModal').classList.add('on');
+ const f=new File([lastBlob],'trikala-'+ymd(day)+'.png',{type:'image/png'});
+ $('shHint').textContent=navigator.canShare&&navigator.canShare({files:[f]})?'':'Press and hold the picture to save or share it.';$('shGo').hidden=!!$('shHint').textContent};
+$('shGo').onclick=async()=>{const f=new File([lastBlob],'trikala-'+ymd(day)+'.png',{type:'image/png'});
+ try{await navigator.share({files:[f],text:'Trikāla Sandhyāvandanam today 🙏 https://mahesh-iitm.github.io/Sandhya/'})}catch(err){if(err.name!=='AbortError')$('shHint').textContent='Press and hold the picture to save or share it.'}};
+$('shClose').onclick=()=>$('shModal').classList.remove('on');
+$('shModal').onclick=e=>{if(e.target.id==='shModal')$('shModal').classList.remove('on')};
+
 function render(){
  $('day').value=ymd(day);
  if(loc){$('locName').textContent=loc.name||'Current location';$('locCoords').textContent=`${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}°${loc.el?` · ${Math.round(loc.el)} m`:''}`}
@@ -193,7 +246,7 @@ function render(){
  $('cards').innerHTML=`<div class="sd"><header><i style="background:#7b6fd6"></i><h2>Brāhma Muhūrta</h2><p>Before dawn</p><div class="t">${fmt(s.brahma[0])}<small>until ${fmt(s.brahma[1])}</small></div></header></div>`+
  KEYS.map(k=>{const v=s.K[k],ord=k==='madhyahnika'?[KALA[1],KALA[0],KALA[2]]:KALA;
   return `<div class="sd"><header><i style="background:${col[k]}"></i><h2>${NAMES[k]}</h2><p>${desc[k]}</p><div class="t">${fmt(v.start)}<small>until ${fmt(v.end)}</small></div></header>${ord.map(([kk,l])=>row(l,v[kk])).join('')}${det?row('Prāyaścitta',v.prayaschitta,'pr'):''}${doneBar(k,v)}</div>`}).join('');
- renderTrack();
+ renderTrack();updateShare();
  $('sun').innerHTML=[['Sunrise',s.rise,s.geoRise],['Solar noon',s.noon,null],['Sunset',s.set,s.geoSet]].map(x=>`<div>${x[0]}<b>${fmt(x[1])}</b>${x[2]?'('+fmt(x[2])+')':'&nbsp;'}</div>`).join('');
  drawArc(s);
 }

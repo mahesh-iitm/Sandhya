@@ -126,10 +126,6 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <div class="row" style="margin-top:10px"><button class="pri" id="notif">Turn on notifications</button><button id="test">Test</button></div>
  <p class="st" id="nst"></p>
  <label class="ck" style="margin-top:6px"><input type="checkbox" id="autoloc" checked> Update my location each time I open the app</label>
- <h3 style="margin-top:14px">Calendar</h3>
- <p class="st" style="margin-top:0">Subscribe once. Your calendar then keeps itself updated with the next 30 days, and follows your location when it changes here.</p>
- <div class="row" style="margin-top:8px"><a id="calSub" class="btnlink" href="#">Subscribe in Calendar</a><button id="calCopy">Copy link</button></div>
- <p class="st" id="cst">Using Google Calendar? Copy the link, then on a computer open calendar.google.com → Other calendars → + → From URL.</p>
 </section>
 
 <p class="note">Kāla divisions follow sandhyakala.sringeri.net. Prātaḥ: Uttama from 48 min before sunrise to dawn (Sun 6° below horizon), Madhyama to sunrise, Adhama to 72 min after sunrise. Mādhyāhnika: Madhyama from 264 min after sunrise (or 96 min before noon), Uttama the 48 min before solar noon, Adhama to 72 min after. Sāyaṁ: Uttama the 48 min before sunset, Madhyama to nautical dusk (Sun 12° below), Adhama to 72 min after sunset. Prāyaścitta runs to 3 hours after sunset. Brāhma Muhūrta is 96 to 48 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets.</p>
@@ -338,15 +334,6 @@ async function autoLocate(){if(!$('autoloc').checked||!navigator.geolocation||Da
   if(loc&&Math.abs(loc.lat-lat)<.02&&Math.abs(loc.lng-lng)<.02)return; // under ~2 km: keep
   const [nm,dem]=await Promise.all([place(lat,lng),elev(lat,lng)]);useLoc({lat,lng,el:dem||0,name:nm||'Current location'})},()=>{},{maximumAge:600000,timeout:15000})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();status();autoLocate()}});
-// calendar subscription
-const calUrl=()=>SERVER+'/cal/'+uid+'.ics';
-$('calSub').onclick=async e=>{e.preventDefault();if(!loc){$('cst').textContent='Tap “Locate me” first.';return}
- $('cst').textContent='Preparing your calendar…';const ok=await sync();if(!ok){$('cst').textContent='Could not reach the server. Check your internet connection.';return}
- $('cst').textContent='Confirm “Subscribe” on your phone. To refresh faster on iPhone: Settings → Calendar → Accounts → Fetch New Data.';
- location.href=calUrl().replace(/^https:/,'webcal:')};
-$('calCopy').onclick=async()=>{if(!loc){$('cst').textContent='Tap “Locate me” first.';return}await sync();
- try{await navigator.clipboard.writeText(calUrl());$('cst').textContent='Link copied. In Google Calendar on a computer: Other calendars → + → From URL → paste.'}catch{$('cst').textContent='Your link: '+calUrl()}};
-
 render();status();if(set.on&&loc){(perm()==='granted'?subscribe().then(sub=>sync({sub})).catch(()=>sync()):sync()).then(()=>status())}autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
 }
 </script>

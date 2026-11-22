@@ -101,7 +101,9 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 
 <section class="box" id="trk">
  <h3>My Sandhyāvandanam</h3>
- <div class="streak"><div><b id="stk">0</b> <span>day streak</span></div><div style="color:var(--soft)">Best <span id="best">0</span> · All three, any kāla</div></div>
+ <div class="streak"><div><b id="sk">0</b> <span>day sakāla streak</span></div><div style="color:var(--soft)">Best <span id="skb">0</span></div></div>
+ <p class="st" style="margin-top:4px">Sakāla: all three sandhyās done within Uttama, Madhyama or Adhama kāla.</p>
+ <div class="streak" style="margin-top:10px;font-size:15px"><div><b id="stk" style="font-size:22px">0</b> <span>days with all three done</span></div><div style="color:var(--soft)">Best <span id="best">0</span> · any kāla, Prāyaścitta included</div></div>
  <div class="grid" id="grid"></div>
  <div class="legend"><span style="--c:#2e9d5b">Uttama</span><span style="--c:#c99a00">Madhyama</span><span style="--c:#e07a1f">Adhama</span><span style="--c:#c4466b">Prāyaścitta</span><span style="--c:#8a8499">Outside kāla</span></div>
  <p class="st">Tap “Did it now” on a sandhyā above when you finish. Your record stays on this phone only.</p>
@@ -167,11 +169,14 @@ $('cards').addEventListener('click',e=>{const b=e.target.closest('button');if(!b
  else if(ds.undo){const d=ymd(day);if(log[d]){delete log[d][ds.undo];if(!Object.keys(log[d]).length)delete log[d];saveLog();render()}}
  else if(ds.pick){const bar=b.parentElement;bar.querySelector('input').hidden=false;bar.querySelector('[data-save]').hidden=false;b.hidden=true;bar.querySelector('input').focus()}
  else if(ds.save){const inp=b.parentElement.querySelector('input');if(!inp.value)return;const [h,m]=inp.value.split(':').map(Number);const t=new Date(day);t.setHours(h,m,0,0);record(ds.save,t)}});
-function renderTrack(){const today=new Date();today.setHours(12,0,0,0);const full=d=>{const e=log[ymd(d)];return e&&KEYS.every(k=>e[k])};
- let st=0,d=new Date(today);if(!full(d))d.setDate(d.getDate()-1);while(full(d)){st++;d.setDate(d.getDate()-1)}
- const days=Object.keys(log).filter(x=>KEYS.every(k=>log[x][k])).sort();let best=0,run=0,prev=null;
- for(const x of days){const t=new Date(x+'T12:00:00');run=prev&&Math.round((t-prev)/864e5)===1?run+1:1;best=Math.max(best,run);prev=t}
- $('stk').textContent=st;$('best').textContent=best;
+function renderTrack(){const today=new Date();today.setHours(12,0,0,0);
+ const SAK=['uttama','madhyama','adhama'];
+ const ok=(d,f)=>{const e=log[ymd(d)];return !!e&&KEYS.every(k=>e[k]&&f(e[k]))};
+ const streaks=f=>{let st=0,d=new Date(today);if(!ok(d,f))d.setDate(d.getDate()-1);while(ok(d,f)){st++;d.setDate(d.getDate()-1)}
+  const days=Object.keys(log).filter(x=>ok(new Date(x+'T12:00:00'),f)).sort();let best=0,run=0,prev=null;
+  for(const x of days){const t=new Date(x+'T12:00:00');run=prev&&Math.round((t-prev)/864e5)===1?run+1:1;best=Math.max(best,run);prev=t}return [st,best]};
+ const [a,ab]=streaks(()=>true),[sk,skb]=streaks(e=>SAK.includes(e.kala));
+ $('stk').textContent=a;$('best').textContent=ab;$('sk').textContent=sk;$('skb').textContent=skb;
  const cols=[...Array(14)].map((_,i)=>{const x=new Date(today);x.setDate(x.getDate()-13+i);return x});
  const short={pratah:'Prātaḥ',madhyahnika:'Mādhyāhnika',sayam:'Sāyaṁ'},C={u:'#2e9d5b',m:'#c99a00',a:'#e07a1f',p:'#c4466b',x:'#8a8499'};
  $('grid').innerHTML='<span></span>'+cols.map(x=>`<span class="dh">${x.getDate()}</span>`).join('')+

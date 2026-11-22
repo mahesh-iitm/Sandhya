@@ -69,6 +69,11 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 .btnlink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:12px;background:var(--acc);color:#fff;font-weight:600;text-decoration:none}
 .credit{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
 .credit p{margin:0 0 8px}.credit a{color:var(--acc)}.credit b{color:var(--ink)}
+.seg{gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}.seg button{flex:1;border:0;border-radius:0;background:transparent}.seg button.on{background:var(--acc);color:#fff;font-weight:600}
+#cmp{position:fixed;inset:0;background:rgba(10,8,25,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#cmp.on{display:flex}#cmp .in{background:var(--card);border-radius:18px;padding:16px;max-width:420px;width:100%;display:grid;gap:12px}
+.dialwrap{width:min(78vw,300px);aspect-ratio:1;margin:0 auto}#dial{width:100%;height:100%}
+.cmpmsg{text-align:center;font-size:22px;font-weight:700;margin:0;min-height:30px}.cmpmsg.ok{color:#2e9d5b}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -99,6 +104,7 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  </details>
 </div>
 
+<div class="row" style="margin:-4px 0 12px"><button id="cmpOpen" style="flex:1">🧭 Compass · face East or North</button></div>
 <div class="row date"><button id="prev" aria-label="Previous day">‹</button><input type="date" id="day"><button id="next" aria-label="Next day">›</button><button id="today">Today</button></div>
 
 <div class="arc"><svg id="arc" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
@@ -124,6 +130,13 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
   <div class="row"><input id="bkIn" placeholder="Backup code" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:0"><button id="bkGo">Restore</button></div>
  </details>
 </section>
+<div id="cmp" role="dialog" aria-modal="true" aria-label="Compass"><div class="in">
+ <div class="row" style="justify-content:space-between"><b style="font-size:18px">Diśā · दिशा</b><button id="cmpClose">Close</button></div>
+ <div class="row seg" role="group" aria-label="Face"><button data-t="90" class="on">East · पूर्व</button><button data-t="0">North · उत्तर</button></div>
+ <div class="dialwrap"><svg id="dial" viewBox="-150 -150 300 300" aria-hidden="true"></svg></div>
+ <p id="cmpMsg" class="cmpmsg">Hold the phone flat</p>
+ <p class="st" id="cmpNote" style="margin:0;text-align:center">Keep away from metal and magnets. Point the top of the phone where you will face.</p>
+</div></div>
 <div id="shModal" role="dialog" aria-modal="true" aria-label="Trikāla card"><div class="in"><img id="shImg" alt="Trikāla Sandhyāvandanam card"><div class="row"><button class="pri" id="shGo">Share</button><button id="shClose">Close</button></div><p class="st" id="shHint" style="margin:0"></p></div></div>
 
 <section class="box">
@@ -220,6 +233,39 @@ function initBackup(){$('bkCode').textContent=uid;
   const msg=`Restored ${res.days} day${res.days>1?'s':''} of record. This phone now uses the same backup code.`;$('bkSt').textContent=msg;setTimeout(()=>$('bkSt').textContent=msg,1500)}}
 // pull on open (in case another device or a reinstall has more)
 async function bootBackup(){initBackup();const before=JSON.stringify(log);const r=await pullLog();if(r&&r.added)render();if(JSON.stringify(log)!==before||r&&!r.days&&Object.keys(log).length)pushLog()}
+
+// ---- compass ----
+{
+let hd=null,sm=null,target=90,running=false;
+const ns='http://www.w3.org/2000/svg';
+function dialSVG(){let t='';for(let a=0;a<360;a+=10){const big=a%30===0,r1=big?118:124,x1=Math.sin(a*Math.PI/180),y1=-Math.cos(a*Math.PI/180);
+  t+=`<line x1="${x1*r1}" y1="${y1*r1}" x2="${x1*132}" y2="${y1*132}" stroke="currentColor" stroke-opacity="${big?.7:.35}" stroke-width="${big?2.5:1.5}"/>`}
+ const L=[['N',0,'उ'],['E',90,'पू'],['S',180,'द'],['W',270,'प']].map(([l,a,d])=>{const x=Math.sin(a*Math.PI/180)*96,y=-Math.cos(a*Math.PI/180)*96,hi=a===target;
+  return `<g transform="translate(${x} ${y}) rotate(${a})"><text text-anchor="middle" y="0" font-size="${hi?26:20}" font-weight="700" fill="${hi?'#d9651f':'currentColor'}">${l}</text><text text-anchor="middle" y="22" font-size="14" fill="${hi?'#d9651f':'currentColor'}" opacity=".8">${d}</text></g>`}).join('');
+ const tx=Math.sin(target*Math.PI/180),ty=-Math.cos(target*Math.PI/180);
+ return `<circle r="140" fill="none" stroke="currentColor" stroke-opacity=".15" stroke-width="14"/>
+  <g id="rose">${t}${L}<circle cx="${tx*140}" cy="${ty*140}" r="10" fill="#d9651f"/></g>
+  <path d="M0,-150 L-12,-128 L12,-128 Z" fill="#2e9d5b"/><circle r="5" fill="currentColor"/>`}
+function draw(){const d=$('dial');if(!d.firstChild||d.dataset.t!=target){d.innerHTML=dialSVG();d.dataset.t=target}
+ if(sm==null)return;$('rose').setAttribute('transform',`rotate(${-sm})`);
+ const diff=((target-sm+540)%360)-180,name=target===90?'East':'North',m=$('cmpMsg');
+ if(Math.abs(diff)<=6){m.textContent=`Facing ${name} ✓`;m.className='cmpmsg ok';if(!draw.buzz&&navigator.vibrate)navigator.vibrate(60);draw.buzz=true}
+ else{m.textContent=`Turn ${Math.round(Math.abs(diff))}° ${diff>0?'right':'left'}`;m.className='cmpmsg';draw.buzz=false}}
+function onOri(e){let h=null;
+ if(typeof e.webkitCompassHeading==='number')h=e.webkitCompassHeading;
+ else if(e.absolute&&e.alpha!=null)h=360-e.alpha;
+ if(h==null)return;h=(h+(screen.orientation?.angle||window.orientation||0)+360)%360;
+ if(sm==null)sm=h;else{let d=((h-sm+540)%360)-180;sm=(sm+d*0.25+360)%360}
+ hd=h;draw()}
+async function start(){$('cmp').classList.add('on');draw();$('cmpMsg').textContent='Hold the phone flat';$('cmpMsg').className='cmpmsg';
+ try{if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted'){$('cmpMsg').textContent='Motion access was refused';$('cmpNote').textContent='Close the app fully, reopen it and tap Allow when asked.';return}}}catch(err){}
+ if(!('DeviceOrientationEvent' in window)){$('cmpMsg').textContent='No compass on this device';return}
+ if(!running){window.addEventListener('deviceorientationabsolute',onOri);window.addEventListener('deviceorientation',onOri);running=true}
+ setTimeout(()=>{if(hd==null){$('cmpMsg').textContent='No compass reading';$('cmpNote').textContent='This works on a phone. Move it in a figure-8 to calibrate, then try again.'}},3000)}
+function stop(){$('cmp').classList.remove('on');window.removeEventListener('deviceorientationabsolute',onOri);window.removeEventListener('deviceorientation',onOri);running=false;hd=null;sm=null}
+$('cmpOpen').onclick=start;$('cmpClose').onclick=stop;$('cmp').onclick=e=>{if(e.target.id==='cmp')stop()};
+document.querySelectorAll('#cmp .seg button').forEach(b=>b.onclick=()=>{target=+b.dataset.t;document.querySelectorAll('#cmp .seg button').forEach(x=>x.classList.toggle('on',x===b));draw.buzz=false;draw()});
+}
 
 // ---- share card ----
 let lastBlob=null;

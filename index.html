@@ -112,7 +112,7 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <div class="grid" id="grid"></div>
  <div class="legend"><span style="--c:#2e9d5b">Uttama</span><span style="--c:#c99a00">Madhyama</span><span style="--c:#e07a1f">Adhama</span><span style="--c:#c4466b">Prāyaścitta</span><span style="--c:#8a8499">Outside kāla</span></div>
  <div class="sharebar"><button class="pri" id="shareBtn">Share Trikāla card</button><span class="st" id="shareNote" style="margin:0"></span></div>
- <p class="st">Tap “Did it now” on a sandhyā above when you finish. Your record stays on this phone only.</p>
+ <p class="st">Tap “कृतम् · Done” on a sandhyā above when you finish. Your record stays on this phone only.</p>
 </section>
 <div id="shModal" role="dialog" aria-modal="true" aria-label="Trikāla card"><div class="in"><img id="shImg" alt="Trikāla Sandhyāvandanam card"><div class="row"><button class="pri" id="shGo">Share</button><button id="shClose">Close</button></div><p class="st" id="shHint" style="margin:0"></p></div></div>
 
@@ -170,7 +170,7 @@ function record(k,t){const s=calc(day);if(!s||s.polar)return;const d=ymd(day);
 function doneBar(k,v){const d=ymd(day),e=log[d]?.[k],isToday=d===ymd(new Date());
  if(e){const [l,c]=KL[e.kala];return `<div class="done"><span class="ok">✓ Done at ${fmt(new Date(e.t))} <span class="tag ${c}">${l}</span></span><button class="lnk" data-undo="${k}">Undo</button></div>`}
  const future=day>new Date()&&!isToday;if(future)return '';
- return `<div class="done">${isToday?`<button class="pri" data-now="${k}">Did it now</button>`:''}<button class="lnk" data-pick="${k}">${isToday?'Done earlier?':'Record time'}</button><input type="time" data-time="${k}" hidden aria-label="Time completed"><button data-save="${k}" hidden>Save</button></div>`}
+ return `<div class="done">${isToday?`<button class="pri" data-now="${k}" lang="sa"><span style="font-family:'Tiro Devanagari Sanskrit',serif;font-size:18px">कृतम्</span> · Done</button>`:''}<button class="lnk" data-pick="${k}">${isToday?'Done earlier?':'Record time'}</button><input type="time" data-time="${k}" hidden aria-label="Time completed"><button data-save="${k}" hidden>Save</button></div>`}
 $('cards').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
  if(ds.now)record(ds.now,new Date());
  else if(ds.undo){const d=ymd(day);if(log[d]){delete log[d][ds.undo];if(!Object.keys(log[d]).length)delete log[d];saveLog();render()}}

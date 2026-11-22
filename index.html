@@ -67,6 +67,8 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 #shModal .in{background:var(--card);border-radius:18px;padding:14px;max-width:440px;width:100%;display:grid;gap:10px}
 #shModal img{width:100%;border-radius:12px;display:block}
 .btnlink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:12px;background:var(--acc);color:#fff;font-weight:600;text-decoration:none}
+.credit{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
+.credit p{margin:0 0 8px}.credit a{color:var(--acc)}.credit b{color:var(--ink)}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -128,7 +130,10 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <label class="ck" style="margin-top:6px"><input type="checkbox" id="autoloc" checked> Update my location each time I open the app</label>
 </section>
 
-<p class="note">Kāla divisions follow sandhyakala.sringeri.net. Prātaḥ: Uttama from 48 min before sunrise to dawn (Sun 6° below horizon), Madhyama to sunrise, Adhama to 72 min after sunrise. Mādhyāhnika: Madhyama from 264 min after sunrise (or 96 min before noon), Uttama the 48 min before solar noon, Adhama to 72 min after. Sāyaṁ: Uttama the 48 min before sunset, Madhyama to nautical dusk (Sun 12° below), Adhama to 72 min after sunset. Prāyaścitta runs to 3 hours after sunset. Brāhma Muhūrta is 96 to 48 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets.</p>
+<footer class="credit">
+ <p><b>Kāla nirdhāraṇa</b> in this app (the Sandhyā timings and their Uttama, Madhyama, Adhama and Prāyaścitta divisions) follows <a href="https://sandhyakala.sringeri.net/" target="_blank" rel="noopener"><b>Sandhyā Kāla Mayūkha</b></a> from sringeri.net. With gratitude to its creators. For the full method, the Dharmaśāstra basis and pramāṇas, please see <a href="https://sandhyakala.sringeri.net/" target="_blank" rel="noopener">sandhyakala.sringeri.net</a>.</p>
+ <p>Sunrise and sunset are apparent times, with geometric times in brackets.</p>
+</footer>
 </main>
 
 <script src="sun.js"></script>

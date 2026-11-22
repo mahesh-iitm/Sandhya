@@ -230,7 +230,9 @@ async function makeCard(){const d=ymd(day),e=log[d];const s=calc(day);if(!e||!s)
  // stars
  g.fillStyle='rgba(255,255,255,.55)';for(let i=0;i<60;i++){const x=(i*397)%W,y=(i*211)%520;if(y>50&&y<280&&x>220&&x<860)continue;g.beginPath();g.arc(x,y,(i%3)+1,0,7);g.fill()}
  g.textAlign='center';g.fillStyle='#fff';
- g.font='72px "Tiro Devanagari Sanskrit", serif';g.fillText('त्रिकाल सन्ध्यावन्दनम्',W/2,150);
+ {const T='त्रिकाल सन्ध्यावन्दनम्';let fs=72;g.font=fs+'px "Tiro Devanagari Sanskrit", serif';let w=g.measureText(T).width;
+  if(w>W-120){fs=Math.floor(fs*(W-120)/w);g.font=fs+'px "Tiro Devanagari Sanskrit", serif';w=g.measureText(T).width}
+  g.textAlign='left';g.fillText(T,Math.round((W-w)/2),150);g.textAlign='center'}
  g.font='600 34px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.8)';g.fillText('Trikāla Sandhyāvandanam',W/2,205);
  g.font='400 32px Inter, sans-serif';g.fillStyle='rgba(255,255,255,.75)';
  g.fillText(day.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+(loc?.name&&!/location/i.test(loc.name)?' · '+loc.name:''),W/2,255);

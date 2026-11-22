@@ -9,3 +9,6 @@ crons = ["* * * * *"]
 binding = "DB"
 database_name = "sandhya"
 database_id = "258fc997-93a6-4e1c-a129-24e57c0842bd"
+
+[limits]
+cpu_ms = 60000

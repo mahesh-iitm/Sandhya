@@ -45,17 +45,16 @@ function ics(u,origin){const z=t=>new Date(t).toISOString().replace(/[-:]/g,'').
  return L.map(fold).join('\r\n')+'\r\n'}
 
 async function tick(env){const now=Date.now();
- const due=(await env.DB.prepare('SELECT * FROM users WHERE sub IS NOT NULL AND next_at IS NOT NULL AND next_at<=? LIMIT 200').bind(now+20e3).all()).results;
+ const due=(await env.DB.prepare('SELECT * FROM users WHERE sub IS NOT NULL AND next_at IS NOT NULL AND next_at<=? ORDER BY next_at LIMIT 900').bind(now+20e3).all()).results;
  if(!due.length)return;const v=await vapid(env);
- await Promise.all(due.map(async u=>{const [ds,k]=(u.next_k||':').split(':');
-  let res=null;
-  if(now-u.next_at<30*MIN){ // skip very stale alerts
-   const e=dayEvents(u,0,u.next_at+1).concat(dayEvents(u,1,u.next_at+1)).find(x=>x.ds===ds&&x.k===k);
+ const stmts=await Promise.all(due.map(async u=>{const [ds,k]=(u.next_k||':').split(':');let res=null;
+  if(now-u.next_at<30*MIN){const e=dayEvents(u,0,u.next_at+1).concat(dayEvents(u,1,u.next_at+1)).find(x=>x.ds===ds&&x.k===k);
    if(e){const payload=JSON.stringify({title:NAMES[k],body:body(u,e.K,k),tag:`${ds}-${k}`,url:'/Sandhya/'});
     try{res=await sendPush(JSON.parse(u.sub),payload,v)}catch(err){res=null}}}
-  if(res&&(res.status===404||res.status===410)){await env.DB.prepare('UPDATE users SET sub=NULL,next_at=NULL,next_k=NULL WHERE id=?').bind(u.id).run();return}
+  if(res&&(res.status===404||res.status===410))return env.DB.prepare('UPDATE users SET sub=NULL,next_at=NULL,next_k=NULL WHERE id=?').bind(u.id);
   const nx=nextAlert(u,Math.max(u.next_at,now-60e3)+1000);
-  await env.DB.prepare('UPDATE users SET next_at=?,next_k=?,last_push=?,last_status=? WHERE id=?').bind(nx?.at??null,nx?`${nx.ds}:${nx.k}`:null,now,res?res.status:null,u.id).run()}))}
+  return env.DB.prepare('UPDATE users SET next_at=?,next_k=?,last_push=?,last_status=? WHERE id=?').bind(nx?.at??null,nx?`${nx.ds}:${nx.k}`:null,now,res?res.status:null,u.id)}));
+ for(let i=0;i<stmts.length;i+=100)await env.DB.batch(stmts.slice(i,i+100))}
 
 export default {
  async fetch(req,env){const url=new URL(req.url),p=url.pathname,o=req.headers.get('Origin')||'';

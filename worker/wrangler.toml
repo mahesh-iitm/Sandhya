@@ -1,0 +1,11 @@
+name = "sandhya"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sandhya"
+database_id = "258fc997-93a6-4e1c-a129-24e57c0842bd"

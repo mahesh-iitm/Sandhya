@@ -66,6 +66,7 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 #shModal.on{display:flex}
 #shModal .in{background:var(--card);border-radius:18px;padding:14px;max-width:440px;width:100%;display:grid;gap:10px}
 #shModal img{width:100%;border-radius:12px;display:block}
+.btnlink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:12px;background:var(--acc);color:#fff;font-weight:600;text-decoration:none}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -124,8 +125,11 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <div class="row" style="margin-top:6px"><span>Alert</span><select id="lead"><option value="0">at the start</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option></select></div>
  <div class="row" style="margin-top:10px"><button class="pri" id="notif">Turn on notifications</button><button id="test">Test</button></div>
  <p class="st" id="nst"></p>
- <div class="row" style="margin-top:10px"><button id="ics">Add next 30 days to calendar</button></div>
- <p class="st">The calendar alerts work even when this app is closed. They use the location shown above.</p>
+ <label class="ck" style="margin-top:6px"><input type="checkbox" id="autoloc" checked> Update my location each time I open the app</label>
+ <h3 style="margin-top:14px">Calendar</h3>
+ <p class="st" style="margin-top:0">Subscribe once. Your calendar then keeps itself updated with the next 30 days, and follows your location when it changes here.</p>
+ <div class="row" style="margin-top:8px"><a id="calSub" class="btnlink" href="#">Subscribe in Calendar</a><button id="calCopy">Copy link</button></div>
+ <p class="st" id="cst">Using Google Calendar? Copy the link, then on a computer open calendar.google.com → Other calendars → + → From URL.</p>
 </section>
 
 <p class="note">Kāla divisions follow sandhyakala.sringeri.net. Prātaḥ: Uttama from 48 min before sunrise to dawn (Sun 6° below horizon), Madhyama to sunrise, Adhama to 72 min after sunrise. Mādhyāhnika: Madhyama from 264 min after sunrise (or 96 min before noon), Uttama the 48 min before solar noon, Adhama to 72 min after. Sāyaṁ: Uttama the 48 min before sunset, Madhyama to nautical dusk (Sun 12° below), Adhama to 72 min after sunset. Prāyaścitta runs to 3 hours after sunset. Brāhma Muhūrta is 96 to 48 min before sunrise. Sunrise and sunset are apparent times, with geometric times in brackets.</p>
@@ -268,7 +272,7 @@ $('detail').checked=store.get('detail',false);$('detail').onchange=()=>{store.se
 // location
 async function place(lat,lng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat=${lat}&lon=${lng}`,{headers:{'Accept-Language':'en'}});const j=await r.json();const a=j.address||{};return a.city||a.town||a.village||a.suburb||a.county||j.name||''}catch{return ''}}
 async function elev(lat,lng){try{const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);const j=await r.json();return j.elevation?.[0]??null}catch{return null}}
-function useLoc(l){loc=l;store.set('loc',loc);render();schedule()}
+function useLoc(l){loc=l;store.set('loc',loc);render();schedule(true)}
 $('locate').onclick=()=>{if(!navigator.geolocation){$('locCoords').textContent='Location is not available in this browser';return}
  $('locCoords').textContent='Finding you…';
  navigator.geolocation.getCurrentPosition(async p=>{const {latitude:lat,longitude:lng,altitude}=p.coords;
@@ -284,50 +288,66 @@ const shift=n=>{day=new Date(day.valueOf()+n*864e5);day.setHours(12,0,0,0);rende
 $('prev').onclick=()=>shift(-1);$('next').onclick=()=>shift(1);$('today').onclick=()=>{day=new Date();day.setHours(12,0,0,0);render()};
 $('day').onchange=e=>{const [y,m,d]=e.target.value.split('-').map(Number);if(y){day=new Date(y,m-1,d,12);render()}};
 
-// notifications
-let swReg=null,timers=[];
+// notifications & server sync
+const SERVER='https://sandhya.mvp004.workers.dev';
+let swReg=null;
 const hasN=()=>'Notification' in window, perm=()=>hasN()?Notification.permission:'unsupported';
 const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{});
-['n0','n1','n2'].forEach((id,i)=>{$(id).checked=set.n[i];$(id).onchange=()=>{set.n[i]=$(id).checked;store.set('set',set);schedule()}});
-$('lead').value=set.lead;$('lead').onchange=()=>{set.lead=+$('lead').value;store.set('set',set);schedule()};
-async function notify(title,body){const o={body,icon:'icon-192.png',badge:'icon-192.png',tag:title+body,requireInteraction:true};
- try{const r=swReg||await navigator.serviceWorker?.ready;if(r){await r.showNotification(title,o);return}}catch{}
+let uid=store.get('uid',null);if(!uid){uid=(crypto.randomUUID?crypto.randomUUID():'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16)));store.set('uid',uid)}
+const swReady=('serviceWorker' in navigator)?navigator.serviceWorker.register('sw.js').then(r=>(swReg=r,navigator.serviceWorker.ready)).catch(()=>null):Promise.resolve(null);
+['n0','n1','n2'].forEach((id,i)=>{$(id).checked=set.n[i];$(id).onchange=()=>{set.n[i]=$(id).checked;store.set('set',set);schedule(true)}});
+$('lead').value=set.lead;$('lead').onchange=()=>{set.lead=+$('lead').value;store.set('set',set);schedule(true)};
+$('autoloc').checked=store.get('autoloc',true);$('autoloc').onchange=()=>store.set('autoloc',$('autoloc').checked);
+async function notify(title,body){const o={body,icon:'icon-192.png',badge:'icon-192.png',tag:title+body};
+ try{const r=await swReady;if(r){await r.showNotification(title,o);return}}catch{}
  try{new Notification(title,o)}catch{}}
-function schedule(){timers.forEach(clearTimeout);timers=[];
- if(!set.on||!loc||!('Notification' in window)||Notification.permission!=='granted'){status();return}
- const now=Date.now(),list=[];
- for(let i=0;i<2;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
-  events(d).forEach(e=>{if(!set.n[e.k])return;const t=e.at-set.lead*min;if(t>now)list.push({...e,t})})}
- list.forEach(e=>timers.push(setTimeout(()=>notify(e.name,(set.lead?`Starts at ${fmt(e.at)}\n`:'')+e.body),e.t-now)));
- timers.push(setTimeout(schedule,Math.min(6*3600e3,(list[list.length-1]?.t||now+3600e3)-now+60e3)));
- status(list[0])}
-function status(next){let s;
+let syncT=null,serverOk=null;
+async function sync(extra={}){if(!loc)return null;
+ const body={id:uid,lat:loc.lat,lng:loc.lng,el:loc.el||0,place:/location/i.test(loc.name||'')?'':loc.name,tz:Intl.DateTimeFormat().resolvedOptions().timeZone,prefs:{n:set.n.map(x=>x?1:0),lead:set.lead},...extra};
+ try{const r=await fetch(SERVER+'/user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});serverOk=r.ok;return r.ok?await r.json():null}catch{serverOk=false;return null}}
+function schedule(push){clearTimeout(syncT);if(push)syncT=setTimeout(()=>sync().then(()=>status()),400);status()}
+function nextLocal(){const now=Date.now();for(let i=0;i<2;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
+ for(const e of events(d)){if(!set.n[e.k])continue;const t=e.at-set.lead*min;if(t>now)return {...e,t}}}return null}
+function status(){let s;const next=nextLocal();
  if(!hasN())s=ios&&!standalone()?'On iPhone, notifications only work when the app is opened from its Home Screen icon. In Safari tap Share, then Add to Home Screen, then open it from that icon.':'This browser cannot show notifications. Open the page in Chrome or Safari, not inside another app.';
- else if(Notification.permission==='denied')s='Notifications are blocked. Allow them for this site in your settings.';
- else if(!set.on||Notification.permission!=='granted')s='Notifications are off.';
+ else if(perm()==='denied')s='Notifications are blocked. Allow them for this app in your phone settings.';
+ else if(!set.on||perm()!=='granted')s='Notifications are off.';
  else if(!loc)s='Set your location first.';
- else s=next?`Next: ${next.name} at ${fmt(new Date(next.t))}${new Date(next.t).getDate()!==new Date().getDate()?' tomorrow':''}`:'No more alerts today.';
+ else if(serverOk===false)s='Could not reach the reminder server. Check your internet connection.';
+ else s=next?`Next: ${next.name} at ${fmt(new Date(next.t))}${new Date(next.t).getDate()!==new Date().getDate()?' tomorrow':''}${loc.name&&!/location/i.test(loc.name)?' · '+loc.name:''}`:'No more alerts today.';
  $('nst').textContent=s;$('nst').style.color=/Next|No more/.test(s)?'':'var(--acc)';$('notif').textContent=set.on&&perm()==='granted'?'Turn off notifications':'Turn on notifications'}
-$('notif').onclick=async()=>{$('nst').textContent='Asking your phone for permission…';
+const u8=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s.length+3)%4)),c=>c.charCodeAt(0));
+async function subscribe(){const r=await swReady;if(!r||!r.pushManager)throw new Error('Push is not supported here');
+ let sub=await r.pushManager.getSubscription();
+ if(!sub){const {key}=await (await fetch(SERVER+'/vapid')).json();sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key)})}
+ return sub.toJSON()}
+$('notif').onclick=async()=>{$('nst').textContent='Setting up…';
  try{if(!hasN()){status();return}
-  if(set.on&&perm()==='granted'){set.on=false}else{const p=await Notification.requestPermission();set.on=p==='granted'}
-  store.set('set',set);schedule()}catch(e){$('nst').textContent='Could not turn on notifications: '+e.message}};
+  if(set.on&&perm()==='granted'){set.on=false;store.set('set',set);try{const r=await swReady;const sb=await r?.pushManager?.getSubscription();await sb?.unsubscribe()}catch{}await sync({sub:null});status();return}
+  const p=await Notification.requestPermission();if(p!=='granted'){set.on=false;store.set('set',set);status();return}
+  if(!loc){$('nst').textContent='Tap “Locate me” first, then turn on notifications.';return}
+  const sub=await subscribe();const res=await sync({sub});set.on=!!res;store.set('set',set);status()}
+ catch(e){$('nst').textContent='Could not turn on notifications: '+e.message}};
 $('test').onclick=async()=>{try{if(!hasN()){status();return}if(perm()!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){status();return}}await notify('Sandhyā Kāla','Notifications are working');$('nst').textContent='Test sent. If no alert appeared, check notification settings for this app.'}catch(e){$('nst').textContent='Test failed: '+e.message}};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();schedule()}});
+// refresh location quietly when the app opens (only if permission was already given)
+let lastAuto=0;
+async function autoLocate(){if(!$('autoloc').checked||!navigator.geolocation||Date.now()-lastAuto<15*60e3)return;
+ try{const q=await navigator.permissions?.query({name:'geolocation'});if(!q||q.state!=='granted')return}catch{return}
+ lastAuto=Date.now();navigator.geolocation.getCurrentPosition(async p=>{const {latitude:lat,longitude:lng}=p.coords;
+  if(loc&&Math.abs(loc.lat-lat)<.02&&Math.abs(loc.lng-lng)<.02)return; // under ~2 km: keep
+  const [nm,dem]=await Promise.all([place(lat,lng),elev(lat,lng)]);useLoc({lat,lng,el:dem||0,name:nm||'Current location'})},()=>{},{maximumAge:600000,timeout:15000})}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();status();autoLocate()}});
+// calendar subscription
+const calUrl=()=>SERVER+'/cal/'+uid+'.ics';
+$('calSub').onclick=async e=>{e.preventDefault();if(!loc){$('cst').textContent='Tap “Locate me” first.';return}
+ $('cst').textContent='Preparing your calendar…';const ok=await sync();if(!ok){$('cst').textContent='Could not reach the server. Check your internet connection.';return}
+ $('cst').textContent='Confirm “Subscribe” on your phone. To refresh faster on iPhone: Settings → Calendar → Accounts → Fetch New Data.';
+ location.href=calUrl().replace(/^https:/,'webcal:')};
+$('calCopy').onclick=async()=>{if(!loc){$('cst').textContent='Tap “Locate me” first.';return}await sync();
+ try{await navigator.clipboard.writeText(calUrl());$('cst').textContent='Link copied. In Google Calendar on a computer: Other calendars → + → From URL → paste.'}catch{$('cst').textContent='Your link: '+calUrl()}};
 
-// calendar file
-$('ics').onclick=()=>{if(!loc){$('locCoords').textContent='Set your location first';return}
- const z=t=>t.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,''),stamp=z(new Date());let out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Sandhya Kala//EN','CALSCALE:GREGORIAN'];
- for(let i=0;i<30;i++){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+i);
-  events(d).forEach(e=>{if(!set.n[e.k])return;const end=e.end;
-   out.push('BEGIN:VEVENT',`UID:${z(e.at)}-${e.k}@sandhyakala`,`DTSTAMP:${stamp}`,`DTSTART:${z(e.at)}`,`DTEND:${z(end)}`,`SUMMARY:${e.name}`,`DESCRIPTION:${e.body.replace(/\n/g,'\\n')}`,`LOCATION:${(loc.name||'').replace(/[,;]/g,' ')}`,
-    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${e.name}`,`TRIGGER:-PT${set.lead}M`,'END:VALARM','END:VEVENT')})}
- out.push('END:VCALENDAR');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out.join('\r\n')],{type:'text/calendar'}));a.download='sandhya-30-days.ics';document.body.appendChild(a);a.click();a.remove()};
-
-render();schedule();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
+render();status();if(set.on&&loc)sync();autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
 }
 </script>
 </body>

@@ -1,5 +1,8 @@
 import {kalas,localYMD,hm,KEYS,NAMES} from './kala.js';
 import {newVapid,sendPush} from './webpush.js';
+import {SCRIPT_T} from './scripts.js';
+const Lx=(k,sc)=>(sc&&sc!=='en'&&SCRIPT_T[k])?SCRIPT_T[k][sc]:k;
+const scOf=u=>{try{return JSON.parse(u.prefs||'{}').script||'en'}catch{return 'en'}};
 const ORIGIN='https://mahesh-iitm.github.io';
 const MIN=6e4,DAY=864e5;
 const cors={'Access-Control-Allow-Origin':ORIGIN,'Vary':'Origin','Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'86400'};
@@ -17,13 +20,13 @@ function dayEvents(u,offset,now=Date.now()){const [y,m,d]=localYMD(now,u.tz);con
  const p=JSON.parse(u.prefs||'{}'),on=p.n||[1,1,1],lead=+p.lead||0,ds=dt.toISOString().slice(0,10);
  return KEYS.map((k,i)=>({k,i,ds,on:!!on[i],K:K[k],at:K[k].start-lead*MIN}))}
 function body(u,K,k){const ord=k==='madhyahnika'?['madhyama','uttama','adhama']:['uttama','madhyama','adhama'];
- return ord.map(x=>`${KL[x]} ${hm(K[x][0],u.tz)} – ${hm(K[x][1],u.tz)}`).join('\n')}
+ const sc=scOf(u);return ord.map(x=>`${Lx(KL[x],sc)} ${hm(K[x][0],u.tz)} – ${hm(K[x][1],u.tz)}`).join('\n')}
 function nextAlert(u,after){for(let o=0;o<3;o++)for(const e of dayEvents(u,o,after))if(e.on&&e.at>after)return e;return null}
 
 async function upsert(env,b){const id=b.id;if(!okId(id))return json({error:'bad id'},400);
  const lat=+b.lat,lng=+b.lng;if(!(Math.abs(lat)<=90&&Math.abs(lng)<=180))return json({error:'bad location'},400);
  const u={id,lat:Math.round(lat*1e3)/1e3,lng:Math.round(lng*1e3)/1e3,el:Math.max(0,Math.min(6000,+b.el||0)),place:String(b.place||'').slice(0,60),tz:String(b.tz||'UTC').slice(0,64),
-  prefs:JSON.stringify({n:(b.prefs?.n||[1,1,1]).map(x=>x?1:0),lead:[0,5,10,15].includes(+b.prefs?.lead)?+b.prefs.lead:0})};
+  prefs:JSON.stringify({n:(b.prefs?.n||[1,1,1]).map(x=>x?1:0),lead:[0,5,10,15].includes(+b.prefs?.lead)?+b.prefs.lead:0,script:['en','sa','te','ta'].includes(b.prefs?.script)?b.prefs.script:'en'})};
  try{new Intl.DateTimeFormat('en',{timeZone:u.tz})}catch{u.tz='UTC'}
  const old=await env.DB.prepare('SELECT sub FROM users WHERE id=?').bind(id).first();
  const sub=b.sub===undefined?(old?.sub??null):(b.sub?JSON.stringify(b.sub):null);
@@ -49,7 +52,7 @@ async function tick(env){const now=Date.now();
  if(!due.length)return;const v=await vapid(env);
  const stmts=await Promise.all(due.map(async u=>{const [ds,k]=(u.next_k||':').split(':');let res=null;
   if(now-u.next_at<30*MIN){const e=dayEvents(u,0,u.next_at+1).concat(dayEvents(u,1,u.next_at+1)).find(x=>x.ds===ds&&x.k===k);
-   if(e){const payload=JSON.stringify({title:NAMES[k],body:body(u,e.K,k),tag:`${ds}-${k}`,url:'/Sandhya/'});
+   if(e){const payload=JSON.stringify({title:Lx(NAMES[k],scOf(u)),body:body(u,e.K,k),tag:`${ds}-${k}`,url:'/Sandhya/'});
     try{res=await sendPush(JSON.parse(u.sub),payload,v)}catch(err){res=null}}}
   if(res&&(res.status===404||res.status===410))return env.DB.prepare('UPDATE users SET sub=NULL,next_at=NULL,next_k=NULL WHERE id=?').bind(u.id);
   const nx=nextAlert(u,Math.max(u.next_at,now-60e3)+1000);

@@ -53,7 +53,7 @@ const PANCH = (() => {
     while (b - a > 1000) { const m = (a + b) / 2; if (elong(m) > 180) a = m; else b = m; }
     return b;
   }
-  const LUNAR = ['Caitra','Vaiśākha','Jyeṣṭha','Āṣāḍha','Śrāvaṇa','Bhādrapada','Āśvayuja','Kārttika','Mārgaśīrṣa','Pauṣya','Māgha','Phālguna'];
+  const LUNAR = ['Caitra','Vaiśākha','Jyeṣṭha','Āṣāḍha','Śrāvaṇa','Bhādrapada','Āśvayuja','Kārtika','Mārgaśīrṣa','Pauṣya','Māgha','Phālguna'];
   const RASI = ['Meṣa','Vṛṣabha','Mithuna','Karkaṭaka','Siṃha','Kanyā','Tulā','Vṛścika','Dhanus','Makara','Kumbha','Mīna'];
   // amānta lunar month containing ms; adhika if no saṅkrānti between the bounding new moons
   function lunarMonth(ms) {

@@ -234,17 +234,16 @@ function renderPanch(){const el=$('pc');if(!loc||typeof PANCH==='undefined'){el.
  let p=pcCache.get(key);if(!p){try{p=PANCH.forDay(+s.rise,+s2.rise,day.getDay())}catch(e){el.hidden=true;return}pcCache.set(key,p)}
  const sameDay=t=>new Date(t).toDateString()===day.toDateString();
  const when=t=>!t?'':(t>=+s2.rise?'all day':`until ${fmt(new Date(t))}${sameDay(t)?'':' (next day)'}`);
- const row=(label,list)=>{const a=list[0];const rest=list.slice(1);
+ const row=(label,list,pre='')=>{const a=list[0];const rest=list.slice(1);
   const then=rest.map(x=>` · then ${L(x.name[0])}${x.end&&x.end<+s2.rise?' '+when(x.end):''}`).join('');
-  return `<div class="pr"><span class="l">${label}</span><span class="v">${L(a.name[0])}</span><span class="w">${when(a.end)}${then}</span></div>`};
+  return `<div class="pr"><span class="l">${label}</span><span class="v">${pre?pre+' ':''}${L(a.name[0])}</span><span class="w">${when(a.end)}${then}</span></div>`};
  let mk=key+CAL;let mm=pcCache.get(mk);if(!mm){try{mm=CAL==='solar'?PANCH.solarMonth(+s.set):PANCH.lunarMonth(+s.rise)}catch(e){mm=null}pcCache.set(mk,mm)}
- const tn=list=>list.map(x=>({...x,name:[PANCH.tithiName(x.i)]}));
+ const tn=list=>list.map((x,j)=>({...x,name:[j>0&&(Math.floor(x.i/15)!==Math.floor(list[0].i/15)||list[0].i%15===14)?PANCH.name('tithi',x.i)[0]:PANCH.tithiName(x.i)]}));
  const masa=!mm?'':CAL==='solar'?`${L(mm.name)}${SCR==='ta'?` (${TAMIL_M[mm.i]})`:''}`:L((mm.adhika?'Adhika ':'')+mm.name);
- const paksha=L(p.tithi[0].i<15?'Śukla Pakṣa':'Kṛṣṇa Pakṣa');
+ const paksha=L(p.tithi[0].i<15?'Śukla':'Kṛṣṇa');
  $('pcRows').innerHTML=`<div class="pr"><span class="l">${L('Vāra')}</span><span class="v">${L(p.vara.name[0])}</span></div>`+
-  row(L('Tithi'),tn(p.tithi))+
-  `<div class="pr"><span class="l">${L('Pakṣa')}</span><span class="v">${paksha}</span></div>`+
-  (CAL?`<div class="pr"><span class="l">${L('Māsa')}</span><span class="v">${masa}</span>${CAL==='solar'?'':`<span class="w">${L('Cāndramāna')}, amānta</span>`}</div>`:`<div class="pr"><span class="l">${L('Māsa')}</span><span class="w" style="grid-column:2">Choose Cāndramāna or Sauramāna above</span></div>`)+
+  row(L('Tithi'),tn(p.tithi),[masa,(p.tithi[0].i%15===14)?'':paksha].filter(Boolean).join(' '))+
+  (CAL?'':`<div class="pr"><span class="l">${L('Māsa')}</span><span class="w" style="grid-column:2">Choose Cāndramāna or Sauramāna above</span></div>`)+
   row(L('Nakṣatra'),p.nakshatra)+row(L('Yoga'),p.yoga)+row(L('Karaṇa'),p.karana);
  document.querySelectorAll('#calSeg button').forEach(x=>x.classList.toggle('on',x.dataset.c===CAL));el.hidden=false}
 

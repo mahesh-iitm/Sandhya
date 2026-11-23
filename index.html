@@ -74,6 +74,12 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 #cmp.on{display:flex}#cmp .in{background:var(--card);border-radius:18px;padding:16px;max-width:420px;width:100%;display:grid;gap:12px}
 .dialwrap{width:min(78vw,300px);aspect-ratio:1;margin:0 auto}#dial{width:100%;height:100%}
 .cmpmsg{text-align:center;font-size:22px;font-weight:700;margin:0;min-height:30px}.cmpmsg.ok{color:#2e9d5b}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px 6px;margin-bottom:14px}
+.pc h3{margin:0 0 4px;font-size:17px}.pc h3 span{font-weight:400;color:var(--soft);font-size:14px}
+.pr{display:grid;grid-template-columns:5.6em minmax(0,1fr);gap:2px 10px;padding:8px 0;border-top:1px solid var(--line)}
+.pr:first-of-type{border-top:0}.pr .l{color:var(--soft);font-size:14px;padding-top:2px}
+.pr .v{font-weight:600}.pr .v .dv{font-family:"Tiro Devanagari Sanskrit",serif;font-weight:400;color:var(--soft);margin-left:6px}
+.pr .w{grid-column:2;color:var(--soft);font-size:14px}
 .sunrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
 .sunrow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:13px;color:var(--soft)}
 .sunrow b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}
@@ -107,6 +113,10 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 <div class="row" style="margin:-4px 0 12px"><button id="cmpOpen" style="flex:1">🧭 Compass · face East or North</button></div>
 <div class="row date"><button id="prev" aria-label="Previous day">‹</button><input type="date" id="day"><button id="next" aria-label="Next day">›</button><button id="today">Today</button></div>
 
+<section class="pc" id="pc" hidden>
+ <h3>Pañcāṅga <span>at sunrise</span></h3>
+ <div id="pcRows"></div>
+</section>
 <div class="arc"><svg id="arc" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
 
 <label class="ck" style="justify-content:flex-end;margin:-4px 0 6px"><input type="checkbox" id="detail"> Show Prāyaścitta</label>
@@ -153,11 +163,14 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 <footer class="credit">
  <p><b>Kāla nirdhāraṇa</b> in this app (the Sandhyā timings and their Uttama, Madhyama, Adhama and Prāyaścitta divisions) follows <a href="https://sandhyakala.sringeri.net/" target="_blank" rel="noopener"><b>Sandhyā Kāla Mayūkha</b></a> from sringeri.net. With gratitude to its creators. For the full method, the Dharmaśāstra basis and pramāṇas, please see <a href="https://sandhyakala.sringeri.net/" target="_blank" rel="noopener">sandhyakala.sringeri.net</a>.</p>
  <p>Sunrise and sunset are apparent times, with geometric times in brackets.</p>
+ <p>Pañcāṅga: dṛk-gaṇita with Lahiri ayanāṁśa, at the sunrise shown above. Positions from Astronomy Engine (MIT licence).</p>
  <p><b>Privacy:</b> only your approximate location, alert settings and sandhyā record are stored, with no name, phone number or contacts.</p>
 </footer>
 </main>
 
 <script src="sun.js"></script>
+<script src="astronomy.min.js"></script>
+<script src="panchanga.js"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -184,6 +197,21 @@ const span=([a,b])=>b>a?`${fmt(a)} – ${fmt(b)}`:'—';
 const summary=v=>KALA.map(([k,l])=>`${l} ${span(v[k])}`).join('\n');
 function events(d){const s=calc(d);if(!s||s.polar)return[];
  return KEYS.map((k,i)=>({k:i,name:NAMES[k],at:s.K[k].start,end:s.K[k].end,body:summary(s.K[k])}))}
+
+// ---- pañcāṅga ----
+const pcCache=new Map();
+function renderPanch(){const el=$('pc');if(!loc||typeof PANCH==='undefined'){el.hidden=true;return}
+ const s=calc(day);if(!s||s.polar||!s.rise){el.hidden=true;return}
+ const nd=new Date(day);nd.setDate(nd.getDate()+1);const s2=calc(nd);if(!s2||!s2.rise){el.hidden=true;return}
+ const key=ymd(day)+loc.lat.toFixed(3)+loc.lng.toFixed(3);
+ let p=pcCache.get(key);if(!p){try{p=PANCH.forDay(+s.rise,+s2.rise,day.getDay())}catch(e){el.hidden=true;return}pcCache.set(key,p)}
+ const sameDay=t=>new Date(t).toDateString()===day.toDateString();
+ const when=t=>!t?'':(t>=+s2.rise?'all day':`until ${fmt(new Date(t))}${sameDay(t)?'':' (next day)'}`);
+ const row=(label,list)=>{const a=list[0];const rest=list.slice(1);
+  const then=rest.map(x=>` · then ${x.name[0]}${x.end&&x.end<+s2.rise?' '+when(x.end):''}`).join('');
+  return `<div class="pr"><span class="l">${label}</span><span class="v">${a.name[0]}<span class="dv">${a.name[1]}</span></span><span class="w">${when(a.end)}${then}</span></div>`};
+ $('pcRows').innerHTML=`<div class="pr"><span class="l">Vāra</span><span class="v">${p.vara.name[0]}<span class="dv">${p.vara.name[1]}</span></span></div>`+
+  row('Tithi',p.tithi)+row('Nakṣatra',p.nakshatra)+row('Yoga',p.yoga)+row('Karaṇa',p.karana);el.hidden=false}
 
 // ---- tracker ----
 const KL={uttama:['Uttama','u'],madhyama:['Madhyama','m'],adhama:['Adhama','a'],prayaschitta:['Prāyaścitta','p'],early:['Before kāla','x'],late:['After kāla','x']};
@@ -327,7 +355,7 @@ function render(){
  $('cards').innerHTML=`<div class="sd"><header><i style="background:#7b6fd6"></i><h2>Brāhma Muhūrta</h2><p>Before dawn</p><div class="t">${fmt(s.brahma[0])}<small>until ${fmt(s.brahma[1])}</small></div></header></div>`+
  KEYS.map(k=>{const v=s.K[k],ord=k==='madhyahnika'?[KALA[1],KALA[0],KALA[2]]:KALA;
   return `<div class="sd"><header><i style="background:${col[k]}"></i><h2>${NAMES[k]}</h2><p>${desc[k]}</p><div class="t">${fmt(v.start)}<small>until ${fmt(v.end)}</small></div></header>${ord.map(([kk,l])=>row(l,v[kk])).join('')}${det?row('Prāyaścitta',v.prayaschitta,'pr'):''}${doneBar(k,v)}</div>`}).join('');
- renderTrack();updateShare();
+ renderTrack();updateShare();renderPanch();
  $('sun').innerHTML=[['Sunrise',s.rise,s.geoRise],['Solar noon',s.noon,null],['Sunset',s.set,s.geoSet]].map(x=>`<div>${x[0]}<b>${fmt(x[1])}</b>${x[2]?'('+fmt(x[2])+')':'&nbsp;'}</div>`).join('');
  drawArc(s);
 }

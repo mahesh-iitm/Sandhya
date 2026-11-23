@@ -21,6 +21,7 @@ h1{font:400 34px/1.15 var(--disp);margin:4px 0 2px}
 :root{--disp:"Tiro Devanagari Sanskrit",serif}:root[data-script=te]{--disp:"Tiro Telugu","Noto Sans Telugu",serif}:root[data-script=ta]{--disp:"Tiro Tamil","Noto Sans Tamil",serif}
 .hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.hdr select{min-height:38px;font-size:14px;padding:0 8px;margin-top:8px}
 #scr{position:fixed;inset:0;background:rgba(10,8,25,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}#scr.on{display:flex}
+#calQ{position:fixed;inset:0;background:rgba(10,8,25,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}#calQ.on{display:flex}#calQ .in{background:var(--card);border-radius:18px;padding:18px;max-width:420px;width:100%;display:grid;gap:10px}#calQ h2{margin:0;font-size:20px}#calQ .sopt span{text-align:right;font-size:13px}
 #scr .in{background:var(--card);border-radius:18px;padding:18px;max-width:420px;width:100%;display:grid;gap:10px}#scr h2{margin:0;font-size:20px}
 .sopt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;min-height:64px;text-align:left;padding:8px 16px;border-radius:14px}
 .sopt b{font:400 28px/1.2 var(--f)}.sopt span{color:var(--soft);font-size:15px}
@@ -121,6 +122,7 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 
 <section class="pc" id="pc" hidden>
  <h3><span data-l="Pañcāṅga" style="font-weight:700;color:var(--ink);font-size:17px">Pañcāṅga</span> <span>at sunrise</span></h3>
+ <div class="row seg" id="calSeg" role="group" aria-label="Māsa system" style="margin:8px 0 4px"><button data-c="lunar"><span data-l="Cāndramāna">Cāndramāna</span></button><button data-c="solar"><span data-l="Sauramāna">Sauramāna</span></button></div>
  <div id="pcRows"></div>
 </section>
 <div class="arc"><svg id="arc" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
@@ -152,6 +154,11 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
  <button class="sopt" data-s="te"><b style="--f:'Tiro Telugu','Noto Sans Telugu',serif">సంధ్యా</b><span>Telugu · తెలుగు</span></button>
  <button class="sopt" data-s="ta"><b style="--f:'Tiro Tamil','Noto Sans Tamil',serif">ஸந்த்⁴யா</b><span>Tamil · தமிழ்</span></button>
  <button class="sopt" data-s="en"><b style="--f:'Tiro Devanagari Sanskrit',serif">Sandhyā</b><span>English</span></button>
+</div></div>
+<div id="calQ" role="dialog" aria-modal="true" aria-label="Choose calendar"><div class="in">
+ <h2>Which māsa do you follow?</h2><p class="st" style="margin:0">This decides the month shown in the pañcāṅga. You can switch any time in the pañcāṅga card.</p>
+ <button class="sopt" data-c="lunar"><b style="--f:var(--disp);font-size:24px" data-l="Cāndramāna">Cāndramāna</b><span>Lunar month · Caitra, Vaiśākha…<br>Andhra, Telangana, Karnataka, Maharashtra</span></button>
+ <button class="sopt" data-c="solar"><b style="--f:var(--disp);font-size:24px" data-l="Sauramāna">Sauramāna</b><span>Solar month · Meṣa, Vṛṣabha…<br>Tamil Nadu, Kerala, Odisha, Bengal</span></button>
 </div></div>
 <div id="cmp" role="dialog" aria-modal="true" aria-label="Compass"><div class="in">
  <div class="row" style="justify-content:space-between"><b style="font-size:18px" data-l="Diśā">Diśā</b><button id="cmpClose">Close</button></div>
@@ -189,7 +196,8 @@ details summary{cursor:pointer;color:var(--soft);font-size:14px;margin-top:8px}
 {
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-let SCR=store.get('script',null);
+let SCR=store.get('script',null),CAL=store.get('cal',null);
+const TAMIL_M=['சித்திரை','வைகாசி','ஆனி','ஆடி','ஆவணி','புரட்டாசி','ஐப்பசி','கார்த்திகை','மார்கழி','தை','மாசி','பங்குனி'];
 const L=k=>(!SCR||SCR==='en'||typeof SCRIPT_T==='undefined'||!SCRIPT_T[k])?k:SCRIPT_T[k][SCR];
 function applyScript(){document.documentElement.dataset.script=SCR||'en';document.documentElement.lang={sa:'sa',te:'te',ta:'ta'}[SCR]||'en';
  document.querySelectorAll('[data-l]').forEach(e=>e.textContent=L(e.dataset.l));$('scrSel').value=SCR||'en'}
@@ -229,8 +237,16 @@ function renderPanch(){const el=$('pc');if(!loc||typeof PANCH==='undefined'){el.
  const row=(label,list)=>{const a=list[0];const rest=list.slice(1);
   const then=rest.map(x=>` · then ${L(x.name[0])}${x.end&&x.end<+s2.rise?' '+when(x.end):''}`).join('');
   return `<div class="pr"><span class="l">${label}</span><span class="v">${L(a.name[0])}</span><span class="w">${when(a.end)}${then}</span></div>`};
+ let mk=key+CAL;let mm=pcCache.get(mk);if(!mm){try{mm=CAL==='solar'?PANCH.solarMonth(+s.set):PANCH.lunarMonth(+s.rise)}catch(e){mm=null}pcCache.set(mk,mm)}
+ const tn=list=>list.map(x=>({...x,name:[PANCH.tithiName(x.i)]}));
+ const masa=!mm?'':CAL==='solar'?`${L(mm.name)}${SCR==='ta'?` (${TAMIL_M[mm.i]})`:''}`:L((mm.adhika?'Adhika ':'')+mm.name);
+ const paksha=L(p.tithi[0].i<15?'Śukla Pakṣa':'Kṛṣṇa Pakṣa');
  $('pcRows').innerHTML=`<div class="pr"><span class="l">${L('Vāra')}</span><span class="v">${L(p.vara.name[0])}</span></div>`+
-  row(L('Tithi'),p.tithi)+row(L('Nakṣatra'),p.nakshatra)+row(L('Yoga'),p.yoga)+row(L('Karaṇa'),p.karana);el.hidden=false}
+  row(L('Tithi'),tn(p.tithi))+
+  `<div class="pr"><span class="l">${L('Pakṣa')}</span><span class="v">${paksha}</span></div>`+
+  (CAL?`<div class="pr"><span class="l">${L('Māsa')}</span><span class="v">${masa}</span>${CAL==='solar'?'':`<span class="w">${L('Cāndramāna')}, amānta</span>`}</div>`:`<div class="pr"><span class="l">${L('Māsa')}</span><span class="w" style="grid-column:2">Choose Cāndramāna or Sauramāna above</span></div>`)+
+  row(L('Nakṣatra'),p.nakshatra)+row(L('Yoga'),p.yoga)+row(L('Karaṇa'),p.karana);
+ document.querySelectorAll('#calSeg button').forEach(x=>x.classList.toggle('on',x.dataset.c===CAL));el.hidden=false}
 
 // ---- tracker ----
 const KL={uttama:['Uttama','u'],madhyama:['Madhyama','m'],adhama:['Adhama','a'],prayaschitta:['Prāyaścitta','p'],early:['Before kāla','x'],late:['After kāla','x']};
@@ -465,8 +481,12 @@ async function autoLocate(){if(!$('autoloc').checked||!navigator.geolocation||Da
   const [nm,dem]=await Promise.all([place(lat,lng),elev(lat,lng)]);useLoc({lat,lng,el:dem||0,name:nm||'Current location'})},()=>{},{maximumAge:600000,timeout:15000})}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();status();autoLocate()}});
 applyScript();$('scrSel').onchange=e=>setScript(e.target.value);
-document.querySelectorAll('#scr .sopt').forEach(b=>b.onclick=()=>{$('scr').classList.remove('on');setScript(b.dataset.s)});
-if(!SCR)$('scr').classList.add('on');
+document.querySelectorAll('#scr .sopt').forEach(b=>b.onclick=()=>{$('scr').classList.remove('on');setScript(b.dataset.s);askCal()});
+function setCal(v){CAL=v;store.set('cal',v);render()}
+document.querySelectorAll('#calSeg button').forEach(b=>b.onclick=()=>setCal(b.dataset.c));
+document.querySelectorAll('#calQ .sopt').forEach(b=>b.onclick=()=>{$('calQ').classList.remove('on');setCal(b.dataset.c)});
+const askCal=()=>{if(!CAL)$('calQ').classList.add('on')};
+if(!SCR)$('scr').classList.add('on');else askCal();
 bootBackup();render();status();if(set.on&&loc){(perm()==='granted'?subscribe().then(sub=>sync({sub})).catch(()=>sync()):sync()).then(()=>status())}autoLocate();setInterval(()=>{if(!document.hidden)drawArc&&render()},60e3);
 }
 </script>

@@ -42,6 +42,28 @@ const PANCH = (() => {
     return out;
   }
 
+  // ---- māsa ----
+  const DAY = 864e5;
+  const elong = ms => { const x = sidereal(new Date(ms)); return mod(x.moon - x.sun, 360); };
+  const rasi = ms => Math.floor(sidereal(new Date(ms)).sun / 30);
+  function newMoon(ms, dir) { // dir -1: last new moon before ms; +1: next after
+    let a = ms, b = ms;
+    if (dir < 0) { b = ms; a = ms - DAY; while (!(elong(a) > elong(b))) { b = a; a -= DAY; } }
+    else { a = ms; b = ms + DAY; while (!(elong(b) < elong(a))) { a = b; b += DAY; } }
+    while (b - a > 1000) { const m = (a + b) / 2; if (elong(m) > 180) a = m; else b = m; }
+    return b;
+  }
+  const LUNAR = ['Caitra','Vaiśākha','Jyeṣṭha','Āṣāḍha','Śrāvaṇa','Bhādrapada','Āśvayuja','Kārttika','Mārgaśīrṣa','Pauṣya','Māgha','Phālguna'];
+  const RASI = ['Meṣa','Vṛṣabha','Mithuna','Karkaṭaka','Siṃha','Kanyā','Tulā','Vṛścika','Dhanus','Makara','Kumbha','Mīna'];
+  // amānta lunar month containing ms; adhika if no saṅkrānti between the bounding new moons
+  function lunarMonth(ms) {
+    const p = newMoon(ms, -1), n = newMoon(ms, +1), r1 = rasi(p), r2 = rasi(n);
+    const i = (r1 + 1) % 12;
+    return { i, adhika: r1 === r2, kshaya: (r2 - r1 + 12) % 12 > 1, start: p, end: n, name: LUNAR[i] };
+  }
+  // saura month: rāśi of the Sun at the given moment (app passes sunset, Tamil convention)
+  function solarMonth(ms) { const i = rasi(ms); return { i, name: RASI[i] }; }
+
   const TITHI = ['Pratipadā','Dvitīyā','Tṛtīyā','Caturthī','Pañcamī','Ṣaṣṭhī','Saptamī','Aṣṭamī','Navamī','Daśamī','Ekādaśī','Dvādaśī','Trayodaśī','Caturdaśī'];
   const TITHI_D = ['प्रतिपत्','द्वितीया','तृतीया','चतुर्थी','पञ्चमी','षष्ठी','सप्तमी','अष्टमी','नवमी','दशमी','एकादशी','द्वादशी','त्रयोदशी','चतुर्दशी'];
   const NAK = ['Aśvinī','Bharaṇī','Kṛttikā','Rohiṇī','Mṛgaśirā','Ārdrā','Punarvasu','Puṣya','Āśleṣā','Maghā','Pūrva Phalgunī','Uttara Phalgunī','Hasta','Citrā','Svātī','Viśākhā','Anurādhā','Jyeṣṭhā','Mūla','Pūrvāṣāḍhā','Uttarāṣāḍhā','Śravaṇa','Dhaniṣṭhā','Śatabhiṣak','Pūrva Bhādrapadā','Uttara Bhādrapadā','Revatī'];
@@ -73,6 +95,7 @@ const PANCH = (() => {
       out[kind] = spans(kind, sunrise, nextSunrise).map(s => ({ ...s, name: name(kind, s.i) }));
     return out;
   }
-  return { forDay, sidereal, lahiri, name };
+  function tithiName(i) { const j = i % 15; if (i === 14) return 'Pūrṇimā'; if (i === 29) return 'Amāvāsyā'; return TITHI[j]; }
+  return { forDay, sidereal, lahiri, name, lunarMonth, solarMonth, newMoon, tithiName, LUNAR, RASI };
 })();
 if (typeof module !== 'undefined') module.exports = PANCH;

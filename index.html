@@ -67,6 +67,7 @@ input,select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid 
 .grid .dot{aspect-ratio:1;border-radius:50%;border:1.5px solid var(--line);max-width:20px;justify-self:center;width:100%}
 .grid .dh{text-align:center}
 @media(max-width:420px){.grid .dh:nth-child(odd){visibility:hidden}}
+.sd h2,.pr .v,.k span:first-child,.c h2{overflow-wrap:anywhere}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:15px;color:var(--soft)}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;background:var(--c)}
 .sharebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
@@ -241,7 +242,7 @@ function renderPanch(){const el=$('pc');if(!loc||typeof PANCH==='undefined'){el.
  let mk=key+CAL;let mm=pcCache.get(mk);if(!mm){try{mm=CAL==='solar'?PANCH.solarMonth(+s.set):PANCH.lunarMonth(+s.rise)}catch(e){mm=null}pcCache.set(mk,mm)}
  const tn=list=>list.map((x,j)=>({...x,name:[j>0&&(Math.floor(x.i/15)!==Math.floor(list[0].i/15)||list[0].i%15===14)?PANCH.name('tithi',x.i)[0]:PANCH.tithiName(x.i)]}));
  const masa=!mm?'':CAL==='solar'?`${L(mm.name)}${SCR==='ta'?` (${TAMIL_M[mm.i]})`:''}`:L((mm.adhika?'Adhika ':'')+mm.name);
- const paksha=L(p.tithi[0].i<15?'Śukla':'Kṛṣṇa');
+ const sk=p.tithi[0].i<15;const paksha=(SCR&&SCR!=='en')?L(sk?'Śukla Pakṣa':'Kṛṣṇa Pakṣa'):(sk?'Śukla':'Kṛṣṇa');
  $('pcRows').innerHTML=`<div class="pr"><span class="l">${L('Vāra')}</span><span class="v">${L(p.vara.name[0])}</span></div>`+
   row(L('Tithi'),tn(p.tithi),[masa,(p.tithi[0].i%15===14)?'':paksha].filter(Boolean).join(' '))+
   (CAL?'':`<div class="pr"><span class="l">${L('Māsa')}</span><span class="w" style="grid-column:2">Choose Cāndramāna or Sauramāna above</span></div>`)+
